@@ -42,7 +42,7 @@ class FlowModule(LightningModule):
 
         self.validation_epoch_metrics = []
         self.validation_epoch_samples = []
-        self.save_hyperparameters()
+        self.save_hyperparameters() # saves to self.hparams (also in model checkpoints)
         
     def on_train_start(self):
         self._epoch_start_time = time.time()
@@ -59,6 +59,8 @@ class FlowModule(LightningModule):
         self._epoch_start_time = time.time()
 
     def model_step(self, noisy_batch: Any):
+        # returns losses for each batch
+        
         training_cfg = self._exp_cfg.training
         loss_mask = noisy_batch['res_mask']
         if training_cfg.min_plddt_mask is not None:
@@ -278,7 +280,6 @@ class FlowModule(LightningModule):
             params=self.model.parameters(),
             **self._exp_cfg.optimizer
         )
-
 
     def predict_step(self, batch, batch_idx):
         device = f'cuda:{torch.cuda.current_device()}'

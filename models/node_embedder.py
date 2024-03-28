@@ -9,9 +9,9 @@ class NodeEmbedder(nn.Module):
     def __init__(self, module_cfg):
         super(NodeEmbedder, self).__init__()
         self._cfg = module_cfg
-        self.c_s = self._cfg.c_s
-        self.c_pos_emb = self._cfg.c_pos_emb
-        self.c_timestep_emb = self._cfg.c_timestep_emb
+        self.c_s = self._cfg.c_s                        # node embedding size
+        self.c_pos_emb = self._cfg.c_pos_emb            # position embedding size
+        self.c_timestep_emb = self._cfg.c_timestep_emb  # timestep embedding size
         self.linear = nn.Linear(
             self._cfg.c_pos_emb + self._cfg.c_timestep_emb, self.c_s)
 

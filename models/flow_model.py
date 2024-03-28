@@ -68,7 +68,7 @@ class FlowModel(nn.Module):
             init_node_embed, trans_t, trans_sc, edge_mask)
 
         # Initial rigids
-        curr_rigids = du.create_rigid(rotmats_t, trans_t,)
+        curr_rigids = du.create_rigid(rotmats_t, trans_t,) # create {T} in FrameFlow paper's notation
 
         # Main trunk
         curr_rigids = self.rigids_ang_to_nm(curr_rigids)
