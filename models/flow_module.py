@@ -59,7 +59,9 @@ class FlowModule(LightningModule):
         self._epoch_start_time = time.time()
 
     def model_step(self, noisy_batch: Any):
-        # returns losses for each batch
+        # returns losses for each batch, as given in FrameDiff paper
+        # see also eq. (6) in FrameFlow paper
+        # every protein in a batch has the same length
         
         training_cfg = self._exp_cfg.training
         loss_mask = noisy_batch['res_mask']
@@ -91,7 +93,7 @@ class FlowModule(LightningModule):
         pred_bb_atoms = all_atom.to_atom37(pred_trans_1, pred_rotmats_1)[:, :, :3]
         gt_bb_atoms *= training_cfg.bb_atom_scale / norm_scale[..., None]
         pred_bb_atoms *= training_cfg.bb_atom_scale / norm_scale[..., None]
-        loss_denom = torch.sum(loss_mask, dim=-1) * 3
+        loss_denom = torch.sum(loss_mask, dim=-1) * 3 # 3 bb atoms per included residue
         bb_atom_loss = torch.sum(
             (gt_bb_atoms - pred_bb_atoms) ** 2 * loss_mask[..., None, None],
             dim=(-1, -2, -3)

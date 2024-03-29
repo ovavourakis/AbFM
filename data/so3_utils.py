@@ -164,6 +164,7 @@ def rotvec_to_rotmat(rotation_vectors: torch.Tensor, tol: float = 1e-7) -> torch
 def rotmat_to_rotvec(rotation_matrices: torch.Tensor) -> torch.Tensor:
     """
     Convert a batch of rotation matrices to rotation vectors (logarithmic map from SO(3) to so(3)).
+        // in other words: go from rotation-matrix representation to axis-angle representation //
     The standard logarithmic map can be derived from Rodrigues' formula via Taylor approximation
     (in this case operating on the vector coefficients of the skew so(3) basis).
 

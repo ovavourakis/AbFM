@@ -20,12 +20,12 @@ data:
 interpolant:
   min_t: 1e-2
   rots:
-    train_schedule: linear
-    sample_schedule: exp
+    train_schedule: linear # TODO: setting to 'exp' will have no effect? rot_sample_kappa not being called 
+    sample_schedule: exp 
     exp_rate: 10
   trans:
-    train_schedule: linear
-    sample_schedule: linear
+    train_schedule: linear  # TODO: setting to 'exp' will have no effect? rot_sample_kappa not being called 
+    sample_schedule: linear # TODO: setting to 'exp' will have no effect; alternative euler step for translations not implemented -> interpolant._trans_euler_step
   sampling:
     num_timesteps: 100
   self_condition: ${model.edge_features.self_condition}
@@ -50,7 +50,7 @@ model:
     num_rbf: 32
     feat_dim: 64
     num_bins: 22
-    self_condition: True
+    self_condition: True # edge reps include with distogram of previous-step t1-calpha-location-prediction
   ipa:
     c_s: ${model.node_embed_size}
     c_z: ${model.edge_embed_size}
@@ -77,13 +77,13 @@ experiment:
   training:
     min_plddt_mask: null
     loss: se3_vf_loss
-    bb_atom_scale: 0.1
-    trans_scale: 0.1
+    bb_atom_scale: 0.1 # convert coordinates from Angstrom to nm
+    trans_scale: 0.1 # convert coordinates from Angstrom to nm
     translation_loss_weight: 2.0
-    t_normalize_clip: 0.9
+    t_normalize_clip: 0.9 # clip loss normaliser 1/(1-t) to [1/(0.1), 1/1]
     rotation_loss_weights: 1.0
     aux_loss_weight: 1.0
-    aux_loss_t_pass: 0.25
+    aux_loss_t_pass: 0.25 # fraction of trajectory to use auxiliary losses for
   wandb:
     name: baseline
     project: se3-fm

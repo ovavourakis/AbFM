@@ -8,10 +8,14 @@ from scipy.optimize import linear_sum_assignment
 
 
 def _centered_gaussian(num_batch, num_res, device):
+    # (num_res * xyz) gaussian noise for each protein
+    # centered at exactly (0,0,0) per protein
     noise = torch.randn(num_batch, num_res, 3, device=device)
     return noise - torch.mean(noise, dim=-2, keepdims=True)
 
 def _uniform_so3(num_batch, num_res, device):
+    # uniformly randomly sampled rotation *matrices* in SO(3)
+    # (one per residue per protein)
     return torch.tensor(
         Rotation.random(num_batch*num_res).as_matrix(),
         device=device,
@@ -39,6 +43,9 @@ class Interpolant:
 
     @property
     def igso3(self):
+        # isotropic Gaussian-equivalent on SO3 
+        # (=truncated-series form of closed-form solution to Wiener diffusion process on SO3)
+        # see FrameDiff paper, Appendix E
         if self._igso3 is None:
             sigma_grid = torch.linspace(0.1, 1.5, 1000)
             self._igso3 = so3_utils.SampleIGSO3(
@@ -48,19 +55,26 @@ class Interpolant:
     def set_device(self, device):
         self._device = device
 
-    def sample_t(self, num_batch):
+    def sample_t(self, num_batch): # theoretically in [0,1)
        t = torch.rand(num_batch, device=self._device)
        return t * (1 - 2*self._cfg.min_t) + self._cfg.min_t
 
     def _corrupt_trans(self, trans_1, t, res_mask):
         trans_nm_0 = _centered_gaussian(*res_mask.shape, self._device)
         trans_0 = trans_nm_0 * du.NM_TO_ANG_SCALE
+        
+        # Kabsch pre-align noise to data to remove global rotation from ODE
+        # see section 2.2 of FrameFlow paper  
         trans_0 = self._batch_ot(trans_0, trans_1, res_mask)
+        
+        # linearly interpolate between t=1 (data) and t=t
         trans_t = (1 - t[..., None]) * trans_0 + t[..., None] * trans_1
         trans_t = _trans_diffuse_mask(trans_t, trans_1, res_mask)
         return trans_t * res_mask[..., None]
     
     def _batch_ot(self, trans_0, trans_1, res_mask):
+        # Kabsch pre-align noise to data to remove global rotation from ODE
+        # see section 2.2 of FrameFlow paper  
         num_batch, num_res = trans_0.shape[:2]
         noise_idx, gt_idx = torch.where(
             torch.ones(num_batch, num_batch))
@@ -89,7 +103,10 @@ class Interpolant:
         ).to(self._device)
         noisy_rotmats = noisy_rotmats.reshape(num_batch, num_res, 3, 3)
         rotmats_0 = torch.einsum(
+            # difference between complete noise (t=0) and correct matrix (t=1)
             "...ij,...jk->...ik", rotmats_1, noisy_rotmats)
+        # interpolate linearly from 0 to t in tangent space and map back to SO(3)
+        # equation (4) in FrameFlow paper
         rotmats_t = so3_utils.geodesic_t(t[..., None], rotmats_1, rotmats_0)
         identity = torch.eye(3, device=self._device)
         rotmats_t = (
@@ -119,11 +136,19 @@ class Interpolant:
         trans_t = self._corrupt_trans(trans_1, t, res_mask)
         noisy_batch['trans_t'] = trans_t
 
+        # WARNING !!!
+        # TODO: should probably instead pass t_new = rot_sample_kappa(t) to _corrupt_rotmats 
+
         rotmats_t = self._corrupt_rotmats(rotmats_1, t, res_mask)
         noisy_batch['rotmats_t'] = rotmats_t
         return noisy_batch
     
     def rot_sample_kappa(self, t):
+        
+        # WARNING !!!
+        # TODO: this is not being called anywhere
+        # should probably go in corrupt_batch(), just before _corrupt_rotmats() is called
+
         if self._rots_cfg.sample_schedule == 'exp':
             return 1 - torch.exp(-t*self._rots_cfg.exp_rate)
         elif self._rots_cfg.sample_schedule == 'linear':
@@ -133,13 +158,15 @@ class Interpolant:
                 f'Invalid schedule: {self._rots_cfg.sample_schedule}')
 
     def _trans_euler_step(self, d_t, t, trans_1, trans_t):
-        trans_vf = (trans_1 - trans_t) / (1 - t)
+        trans_vf = (trans_1 - trans_t) / (1 - t) # v_x in eq. (5) in FrameFlow paper
         return trans_t + trans_vf * d_t
 
     def _rots_euler_step(self, d_t, t, rotmats_1, rotmats_t):
         if self._rots_cfg.sample_schedule == 'linear':
+            # for v_r in eq. (5) in FrameFlow paper
             scaling = 1 / (1 - t)
         elif self._rots_cfg.sample_schedule == 'exp':
+            # for v_r in eq. (7) in FrameFlow paper
             scaling = self._rots_cfg.exp_rate
         else:
             raise ValueError(
@@ -147,6 +174,7 @@ class Interpolant:
         return so3_utils.geodesic_t(
             scaling * d_t, rotmats_1, rotmats_t)
 
+    # TODO: consider implementing a better integrator (not Euler) - could maybe use scipy.integrate.odeint somehow?
     def sample(
             self,
             num_batch,
@@ -158,6 +186,8 @@ class Interpolant:
         # Set-up initial prior samples
         trans_0 = _centered_gaussian(
             num_batch, num_res, self._device) * du.NM_TO_ANG_SCALE
+        # NOTE: during sampling we start from uniform on SO3
+        # training used initial samples from IGSO3
         rotmats_0 = _uniform_so3(num_batch, num_res, self._device)
         batch = {
             'res_mask': res_mask,
@@ -190,7 +220,23 @@ class Interpolant:
             if self._cfg.self_condition:
                 batch['trans_sc'] = pred_trans_1
 
-            # Take reverse step
+            ''' NOTE: 
+            We re-parametrised the loss s.t. the model predicts x_{t=1} and r_{t=1}, 
+            rather than the vector fields v_x and v_r, going from eq. (4.5) to eq. (6) in FrameFlow paper.
+            This means that during sampling, when we actually *need* the vector fields, because
+            
+            d/dt phi(x) = v(phi(x), t)
+            
+            we need to back-compute them from the final-t prediction using eq. (5) [or (7)] in FrameFlow paper.
+
+            The re-parametrisation was carried out to be able to easily apply the auxiliary structural losses
+            during training. See FlowModule->model_step() in models/flow_module.py for more details.
+            It also means that we can easily see how well we've learnt the OT path by 
+            looking at the final-t prediction from early sampling steps.
+            We could potentially even truncate the sampling after a few steps and use the final-t prediction,
+            if it's good enough.
+            '''
+             # Take reverse step
             d_t = t_2 - t_1
             trans_t_2 = self._trans_euler_step(
                 d_t, t_1, pred_trans_1, trans_t_1)
