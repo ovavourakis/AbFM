@@ -18,6 +18,8 @@ def create_full_prot(
     assert atom37.shape[-1] == 3
     assert atom37.shape[-2] == 37
     n = atom37.shape[0]
+
+    # TODO: modify this for two-chain protein
     residue_index = np.arange(n)
     chain_index = np.zeros(n)
     if b_factors is None:

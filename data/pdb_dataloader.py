@@ -61,6 +61,9 @@ class PdbDataModule(LightningDataModule):
 
 
 class PdbDataset(Dataset):
+    """
+    Requires pre-processed PDB data, using process_pdb_files.py.
+    """
     def __init__(
             self,
             *,
@@ -84,7 +87,7 @@ class PdbDataset(Dataset):
     def _init_metadata(self):
         """Initialize metadata."""
 
-        # Process CSV with different filtering criterions.
+        # Process CSV with different filtering criteria.
         pdb_csv = pd.read_csv(self.dataset_cfg.csv_path)
         self.raw_csv = pdb_csv
         pdb_csv = pdb_csv[pdb_csv.modeled_seq_len <= self.dataset_cfg.max_num_res]
@@ -93,12 +96,13 @@ class PdbDataset(Dataset):
             pdb_csv = pdb_csv.iloc[:self.dataset_cfg.subset]
         pdb_csv = pdb_csv.sort_values('modeled_seq_len', ascending=False)
 
-        # Training or validation specific logic.
+        # training- or validation-specific logic
         if self.is_training:
             self.csv = pdb_csv
             self._log.info(
                 f'Training: {len(self.csv)} examples')
         else:
+            # pare down to num_eval_lengths different lengths to evaluate on
             eval_csv = pdb_csv[pdb_csv.modeled_seq_len <= self.dataset_cfg.min_eval_length]
             all_lengths = np.sort(eval_csv.modeled_seq_len.unique())
             length_indices = (len(all_lengths) - 1) * np.linspace(
@@ -119,7 +123,7 @@ class PdbDataset(Dataset):
         processed_feats = du.read_pkl(processed_file_path)
         processed_feats = du.parse_chain_feats(processed_feats)
 
-        # Only take modeled residues.
+        # Only take modeled residues (natural AAs, not others).
         modeled_idx = processed_feats['modeled_idx']
         min_idx = np.min(modeled_idx)
         max_idx = np.max(modeled_idx)
@@ -130,7 +134,7 @@ class PdbDataset(Dataset):
         # Run through OpenFold data transforms.
         chain_feats = {
             'aatype': torch.tensor(processed_feats['aatype']).long(),
-            'all_atom_positions': torch.tensor(processed_feats['atom_positions']).double(),
+            'all_atom_positions': torch.tensor(processed_feats['atom_positions']).double(), # non-centred positions
             'all_atom_mask': torch.tensor(processed_feats['atom_mask']).double()
         }
         chain_feats = data_transforms.atom37_to_frames(chain_feats)
@@ -140,7 +144,7 @@ class PdbDataset(Dataset):
         res_idx = processed_feats['residue_index']
         return {
             'aatype': chain_feats['aatype'],
-            'res_idx': res_idx - np.min(res_idx) + 1,
+            'res_idx': res_idx - np.min(res_idx) + 1, # re-index residues starting at 1, preserving gaps
             'rotmats_1': rotmats_1,
             'trans_1': trans_1,
             'res_mask': torch.tensor(processed_feats['bb_mask']).int(),
@@ -160,6 +164,12 @@ class PdbDataset(Dataset):
 
 
 class LengthBatcher:
+    """
+    Data-parallel, distributed batch sampler that groups proteins by length.
+    Each batch contains multiple proteins of the same length.
+
+    Requires pre-processed PDB data, using process_pdb_files.py.
+    """
 
     def __init__(
             self,
@@ -203,32 +213,37 @@ class LengthBatcher:
         else:
             indices = list(range(len(self._data_csv)))
 
+        # split data across processors
         if len(self._data_csv) > self.num_replicas:
             replica_csv = self._data_csv.iloc[
+                # every num_replicas-th element starting from rank
                 indices[self.rank::self.num_replicas]
             ]
         else:
             replica_csv = self._data_csv
         
         # Each batch contains multiple proteins of the same length.
+        # this minimises padding in each batch, which maximises training efficiency
         sample_order = []
         for seq_len, len_df in replica_csv.groupby('modeled_seq_len'):
             max_batch_size = min(
                 self.max_batch_size,
                 self._sampler_cfg.max_num_res_squared // seq_len**2 + 1,
             )
+            # num batches for this sequence-length
             num_batches = math.ceil(len(len_df) / max_batch_size)
             for i in range(num_batches):
                 batch_df = len_df.iloc[i*max_batch_size:(i+1)*max_batch_size]
                 batch_indices = batch_df['index'].tolist()
                 sample_order.append(batch_indices)
         
-        # Remove any length bias.
+        # mitigate against length bias
+        # TODO: this retains unequal #batches per length; may want to eliminate this
         new_order = torch.randperm(len(sample_order), generator=rng).numpy().tolist()
         return [sample_order[i] for i in new_order]
 
     def _create_batches(self):
-        # Make sure all replicas have the same number of batches Otherwise leads to bugs.
+        # Make sure all replicas have the same number of batches. Otherwise leads to bugs.
         # See bugs with shuffling https://github.com/Lightning-AI/lightning/issues/10947
         all_batches = []
         num_augments = -1

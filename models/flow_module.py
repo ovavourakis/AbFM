@@ -183,7 +183,7 @@ class FlowModule(LightningModule):
             mdtraj_metrics = metrics.calc_mdtraj_metrics(saved_path)
             ca_idx = residue_constants.atom_order['CA']
             ca_ca_metrics = metrics.calc_ca_ca_metrics(final_pos[:, ca_idx])
-            batch_metrics.append((mdtraj_metrics | ca_ca_metrics))
+            batch_metrics.append((mdtraj_metrics | ca_ca_metrics)) # dictionary merge
 
         batch_metrics = pd.DataFrame(batch_metrics)
         self.validation_epoch_metrics.append(batch_metrics)
@@ -234,25 +234,33 @@ class FlowModule(LightningModule):
     def training_step(self, batch: Any, stage: int):
         step_start_time = time.time()
         self.interpolant.set_device(batch['res_mask'].device)
+
+        # noise injection
         noisy_batch = self.interpolant.corrupt_batch(batch)
+
+        # generate edge-rep self-conditioning distogram w/ 50% prob, if specified
         if self._interpolant_cfg.self_condition and random.random() > 0.5:
             with torch.no_grad():
                 model_sc = self.model(noisy_batch)
                 noisy_batch['trans_sc'] = model_sc['pred_trans']
+        
+        # forward pass and per-item losses
         batch_losses = self.model_step(noisy_batch)
+
+        # mean loss across loss types per item in batch
         num_batch = batch_losses['bb_atom_loss'].shape[0]
-        total_losses = {
+        total_losses = { 
             k: torch.mean(v) for k,v in batch_losses.items()
         }
         for k,v in total_losses.items():
             self._log_scalar(
                 f"train/{k}", v, prog_bar=False, batch_size=num_batch)
         
-        # Losses to track. Stratified across t.
+        # mean loss across time-bin; per loss type
         t = torch.squeeze(noisy_batch['t'])
         self._log_scalar(
             "train/t",
-            np.mean(du.to_numpy(t)),
+            np.mean(du.to_numpy(t)), # mean sampled t across batch
             prog_bar=False, batch_size=num_batch)
         for loss_name, loss_dict in batch_losses.items():
             stratified_losses = mu.t_stratified_loss(
@@ -298,6 +306,8 @@ class FlowModule(LightningModule):
             self._print_logger.info(
                 f'Skipping instance {sample_id} length {sample_length}')
             return
+
+        # TODO: modify to call with batch!=1 if specified -> more samples in parallel
         atom37_traj, model_traj, _ = interpolant.sample(
             1, sample_length, self.model
         )

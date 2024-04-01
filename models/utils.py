@@ -55,7 +55,9 @@ def get_time_embedding(timesteps, embedding_dim, max_positions=2000):
 
 
 def t_stratified_loss(batch_t, batch_loss, num_bins=4, loss_name=None):
-    """Stratify loss by binning t."""
+    """Stratify loss by binning t.
+    Returns average loss within each time-bin.
+    Default is splitting t=[0,1] into quarters (4 bins)."""
     batch_t = du.to_numpy(batch_t)
     batch_loss = du.to_numpy(batch_loss)
     flat_losses = batch_loss.flatten()

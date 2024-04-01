@@ -25,7 +25,6 @@ from data import protein
 
 Protein = protein.Protein
 
-
 def process_chain(chain: Chain, chain_id: str) -> Protein:
     """Convert a PDB chain object into a AlphaFold Protein instance.
     

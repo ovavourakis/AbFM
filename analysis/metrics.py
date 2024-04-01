@@ -6,10 +6,15 @@ from tmtools import tm_align
 
 
 def calc_tm_score(pos_1, pos_2, seq_1, seq_2):
+    # https://en.wikipedia.org/wiki/Template_modeling_score
     tm_results = tm_align(pos_1, pos_2, seq_1, seq_2)
     return tm_results.tm_norm_chain1, tm_results.tm_norm_chain2 
 
 def calc_mdtraj_metrics(pdb_path):
+    # DSSP and radius of gyration
+    # https://en.wikipedia.org/wiki/DSSP_(algorithm)
+
+    # TODO: multiple-chain-case: may want to return per-chain
     try:
         traj = md.load(pdb_path)
         pdb_ss = md.compute_dssp(traj, simplified=True)
@@ -17,7 +22,7 @@ def calc_mdtraj_metrics(pdb_path):
         pdb_helix_percent = np.mean(pdb_ss == 'H')
         pdb_strand_percent = np.mean(pdb_ss == 'E')
         pdb_ss_percent = pdb_helix_percent + pdb_strand_percent 
-        pdb_rg = md.compute_rg(traj)[0]
+        pdb_rg = md.compute_rg(traj)[0] # radius of gyration
     except IndexError as e:
         print('Error in calc_mdtraj_metrics: {}'.format(e))
         pdb_ss_percent = 0.0
@@ -34,6 +39,9 @@ def calc_mdtraj_metrics(pdb_path):
     }
 
 def calc_ca_ca_metrics(ca_pos, bond_tol=0.1, clash_tol=1.0):
+    
+    # TODO: modify for multi-chain case (reutrn per-chain!)
+
     ca_bond_dists = np.linalg.norm(
         ca_pos - np.roll(ca_pos, 1, axis=0), axis=-1)[1:]
     ca_ca_dev = np.mean(np.abs(ca_bond_dists - residue_constants.ca_ca))

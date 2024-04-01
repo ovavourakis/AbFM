@@ -5,15 +5,16 @@ data:
     max_num_res: 128
     cache_num_res: 0
     min_num_res: 0
-    subset: null
-    samples_per_eval_length: 5
-    num_eval_lengths: 8
-    min_eval_length: 500
+    subset: null # take first #subset instances from dataset that are within the desired sequence-length range
+    samples_per_eval_length: 5 # #samples (WITH replacement) from each sequence-length to evaluate on
+    num_eval_lengths: 8 # number of different sequence lengths to evaluate on
+    min_eval_length: 500 # TODO: should be MAX eval length accroding to code logic
     csv_path: ./preprocessed/metadata.csv
   loader:
     num_workers: 4
     prefetch_factor: 10
-  sampler:
+  sampler: # parameters for batch sampler LengthBatcher
+           # actual_batch_size = min(max_batch_size, max_num_res_squared // seq_len^2 + 1)
     max_batch_size: 100
     max_num_res_squared: 500_000
 
@@ -50,7 +51,7 @@ model:
     num_rbf: 32
     feat_dim: 64
     num_bins: 22
-    self_condition: True # edge reps include with distogram of previous-step t1-calpha-location-prediction
+    self_condition: True # edge reps include distogram of previous-step t1-calpha-location-prediction (applied stochastically, 50% of the time -> FlowModule.trainig_step())
   ipa:
     c_s: ${model.node_embed_size}
     c_z: ${model.edge_embed_size}
@@ -76,7 +77,7 @@ experiment:
     permute: False
   training:
     min_plddt_mask: null
-    loss: se3_vf_loss
+    loss: se3_vf_loss # one of "bb_atom_loss", "trans_loss", "dist_mat_loss", "auxiliary_loss", "rots_vf_loss", "se3_vf_loss"; will output specified+'auxiliary_loss' (FlowModule->training_step())
     bb_atom_scale: 0.1 # convert coordinates from Angstrom to nm
     trans_scale: 0.1 # convert coordinates from Angstrom to nm
     translation_loss_weight: 2.0

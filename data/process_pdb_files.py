@@ -45,6 +45,8 @@ parser.add_argument(
 
 
 def process_file(file_path: str, write_dir: str):
+    # TODO: will have to be adapted for antibodies
+
     """Processes protein file into usable, smaller pickles.
 
     Args:
@@ -56,16 +58,17 @@ def process_file(file_path: str, write_dir: str):
 
     Raises:
         DataError if a known filtering rule is hit.
-        All other errors are unexpected and are propogated.
+        All other errors are unexpected and are propagated.
     """
     metadata = {}
     pdb_name = os.path.basename(file_path).replace('.pdb', '')
     metadata['pdb_name'] = pdb_name
 
     processed_path = os.path.join(write_dir, f'{pdb_name}.pkl')
+    # TODO: change this to be relative path from directory root
     metadata['processed_path'] = os.path.abspath(processed_path)
     metadata['raw_path'] = file_path
-    parser = PDB.PDBParser(QUIET=True)
+    parser = PDB.PDBParser(QUIET=True) # TODO: consider temporarily setting to False
     structure = parser.get_structure(pdb_name, file_path)
 
     # Extract all chains
@@ -75,9 +78,12 @@ def process_file(file_path: str, write_dir: str):
     metadata['num_chains'] = len(struct_chains)
 
     # Extract features
+
+    # bb_positions, atom_positions, masks
     struct_feats = []
     all_seqs = set()
     for chain_id, chain in struct_chains.items():
+        # TODO: change for antibodies! - not one protein per chain! re-number second chain
         # Convert chain id into int
         chain_id = du.chain_str_to_int(chain_id)
         chain_prot = parsers.process_chain(chain, chain_id)
@@ -91,17 +97,18 @@ def process_file(file_path: str, write_dir: str):
         metadata['quaternary_category'] = 'heteromer'
     complex_feats = du.concat_np_features(struct_feats, False)
 
-    # Process geometry features
+    # aa sequence and sequence length
     complex_aatype = complex_feats['aatype']
     metadata['seq_len'] = len(complex_aatype)
-    modeled_idx = np.where(complex_aatype != 20)[0]
+    modeled_idx = np.where(complex_aatype != 20)[0] # no unnatural AAs
     if np.sum(complex_aatype != 20) == 0:
-        raise errors.LengthError('No modeled residues')
+        raise errors.LengthError('No modeled residues') # all-unnatural AAs
     min_modeled_idx = np.min(modeled_idx)
     max_modeled_idx = np.max(modeled_idx)
     metadata['modeled_seq_len'] = max_modeled_idx - min_modeled_idx + 1
     complex_feats['modeled_idx'] = modeled_idx
     
+    # secondary structure and radius of gyration
     try:
         # MDtraj
         traj = md.load(file_path)
@@ -185,10 +192,12 @@ def main(args):
             all_file_paths,
             write_dir)
     else:
+        # reduce it down to a single-argument function ...
         _process_fn = fn.partial(
             process_fn,
             verbose=args.verbose,
             write_dir=write_dir)
+        # ... which can then be passed to a parallel pool.map()
         with mp.Pool(processes=args.num_processes) as pool:
             all_metadata = pool.map(_process_fn, all_file_paths)
         all_metadata = [x for x in all_metadata if x is not None]
