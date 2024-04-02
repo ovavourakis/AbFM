@@ -12,6 +12,8 @@ class LengthDataset(torch.utils.data.Dataset):
     Dummy dataset containing just protein lengths and sample ids 
     for use during inference. To be wrapped in a DataLoader.
 
+    TODO: requires re-write for two-chain inference
+
     TODO: could be parallelized for speedier inference, but this could
     likely also be done within the DataLoader wrapper
     """

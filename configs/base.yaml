@@ -1,9 +1,9 @@
 data:
   dataset:
     seed: 123
-    max_num_res: 128
+    max_num_res: 300 
     cache_num_res: 0
-    min_num_res: 0
+    min_num_res: 200
     subset: null                # take 1st k instances from dataset that fit the seq-length criteria (null = all)
     samples_per_eval_length: 5  # sample k seqs (WITH replacement) per seq-length to eval on
     num_eval_lengths: 8         # num different seq-lengths to eval on
