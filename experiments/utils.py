@@ -120,7 +120,11 @@ def get_pylogger(name=__name__) -> logging.Logger:
 
 
 def flatten_dict(raw_dict):
-    """Flattens a nested dict."""
+    """
+    Flattens a nested dict into a list of two- or three-tuples, 
+    from which a flat dictionary can be reconstructed.
+    """
+    
     flattened = []
     for k, v in raw_dict.items():
         if isinstance(v, dict):

@@ -106,5 +106,5 @@ experiment:
     dirpath: ckpt/${experiment.wandb.project}/${experiment.wandb.name}/${now:%Y-%m-%d}_${now:%H-%M-%S}
     save_last: True
     save_top_k: 3
-    monitor: valid/non_coil_percent
+    monitor: valid/non_coil_percent # TODO: we want to monitor AB like-ness
     mode: max

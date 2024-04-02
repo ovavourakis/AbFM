@@ -31,7 +31,7 @@ def calc_mdtraj_metrics(pdb_path):
         pdb_strand_percent = 0.0
         pdb_rg = 0.0
     return {
-        'non_coil_percent': pdb_ss_percent,
+        'non_coil_percent': pdb_ss_percent, # NOTE: currently monitored during training for checkpointing
         'coil_percent': pdb_coil_percent,
         'helix_percent': pdb_helix_percent,
         'strand_percent': pdb_strand_percent,

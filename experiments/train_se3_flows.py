@@ -16,7 +16,7 @@ from models.flow_module import FlowModule
 from experiments import utils as eu
 import wandb
 
-log = eu.get_pylogger(__name__)
+log = eu.get_pylogger(__name__) # multi-GPU-friendly python CLI logger
 torch.set_float32_matmul_precision('high')
 
 
