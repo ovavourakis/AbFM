@@ -100,7 +100,7 @@ class PdbDataset(Dataset):
         if self.is_training:
             self.csv = pdb_csv
             self._log.info(
-                f'Training: {len(self.csv)} examples')
+                f'Training set comprises {len(self.csv)} examples.')
         else:
             # pare down to num_eval_lengths different lengths to evaluate on
             eval_csv = pdb_csv[pdb_csv.modeled_seq_len <= self.dataset_cfg.min_eval_length]
@@ -117,7 +117,7 @@ class PdbDataset(Dataset):
             eval_csv = eval_csv.sort_values('modeled_seq_len', ascending=False)
             self.csv = eval_csv
             self._log.info(
-                f'Validation: {len(self.csv)} examples with lengths {eval_lengths}')
+                f'Validation set comprises {len(self.csv)} examples with lengths {eval_lengths}')
 
     def _process_csv_row(self, processed_file_path):
         processed_feats = du.read_pkl(processed_file_path)

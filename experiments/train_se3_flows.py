@@ -64,7 +64,7 @@ class Experiment:
             **self._exp_cfg.trainer,
             callbacks=callbacks,
             logger=logger,
-            use_distributed_sampler=False,
+            use_distributed_sampler=False, # parallelism handled by LengthBatcher internally
             enable_progress_bar=True,
             enable_model_summary=True,
             devices=devices,

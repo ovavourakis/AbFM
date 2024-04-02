@@ -1,27 +1,28 @@
 data:
-  # CSV for path and metadata to training examples.
   dataset:
     seed: 123
     max_num_res: 128
     cache_num_res: 0
     min_num_res: 0
-    subset: null # take first #subset instances from dataset that are within the desired sequence-length range
-    samples_per_eval_length: 5 # #samples (WITH replacement) from each sequence-length to evaluate on
-    num_eval_lengths: 8 # number of different sequence lengths to evaluate on
-    min_eval_length: 500 # TODO: should be MAX eval length accroding to code logic
-    csv_path: ./preprocessed/metadata.csv
+    subset: null                # take 1st k instances from dataset that fit the seq-length criteria (null = all)
+    samples_per_eval_length: 5  # sample k seqs (WITH replacement) per seq-length to eval on
+    num_eval_lengths: 8         # num different seq-lengths to eval on
+    min_eval_length: 500        # TODO: should be MAX eval length accroding to code logic
+    csv_path: ./preprocessed/metadata.csv # CSV for metadata and paths to preprocessed data
+  # Config for DataLoaders
   loader:
     num_workers: 4
     prefetch_factor: 10
-  sampler: # parameters for batch sampler LengthBatcher
-           # actual_batch_size = min(max_batch_size, max_num_res_squared // seq_len^2 + 1)
+  # Config for LengthBatcher (distributed batch sampler)
+  # actual_batch_size = min(max_batch_size, max_num_res_squared // seq_len^2 + 1)
+  sampler:     
     max_batch_size: 100
     max_num_res_squared: 500_000
 
 interpolant:
   min_t: 1e-2
   rots:
-    train_schedule: linear # TODO: setting to 'exp' will have no effect? rot_sample_kappa not being called 
+    train_schedule: linear  # TODO: setting to 'exp' will have no effect? rot_sample_kappa not being called 
     sample_schedule: exp 
     exp_rate: 10
   trans:
@@ -67,24 +68,25 @@ experiment:
   debug: False
   seed: 123
   num_devices: 2
-  warm_start: null
+  warm_start: null                # path to override-config for warm-starting
   warm_start_cfg_override: True
-  use_swa: False
-  batch_ot:
+  use_swa: False                  # TODO: deprecated?
+  batch_ot:                       # TODO: entire section deprecated, as far as I can see
     enabled: True
     cost: kabsch
     noise_per_sample: 1
     permute: False
   training:
     min_plddt_mask: null
-    loss: se3_vf_loss # one of "bb_atom_loss", "trans_loss", "dist_mat_loss", "auxiliary_loss", "rots_vf_loss", "se3_vf_loss"; will output specified+'auxiliary_loss' (FlowModule->training_step())
-    bb_atom_scale: 0.1 # convert coordinates from Angstrom to nm
-    trans_scale: 0.1 # convert coordinates from Angstrom to nm
+    loss: se3_vf_loss # in {"bb_atom_loss", "trans_loss", "dist_mat_loss", "auxiliary_loss", "rots_vf_loss", "se3_vf_loss"}
+                      # will train on the loss specified + 'auxiliary_loss' (FlowModule->training_step())
+    bb_atom_scale: 0.1            # convert coordinates from Angstrom to nm
+    trans_scale: 0.1              # convert coordinates from Angstrom to nm
     translation_loss_weight: 2.0
-    t_normalize_clip: 0.9 # clip loss normaliser 1/(1-t) to [1/(0.1), 1/1]
+    t_normalize_clip: 0.9         # clip loss normaliser 1/(1-t) to [1/(0.1), 1/1]
     rotation_loss_weights: 1.0
     aux_loss_weight: 1.0
-    aux_loss_t_pass: 0.25 # fraction of trajectory to use auxiliary losses for
+    aux_loss_t_pass: 0.25         # use auxiliary losses from t in [0,k]; k<1
   wandb:
     name: baseline
     project: se3-fm
@@ -93,15 +95,15 @@ experiment:
   optimizer:
     lr: 0.0001
   trainer:
-    overfit_batches: 0
-    min_epochs: 1 # prevents early stopping
+    overfit_batches: 0            # set to non-zero to sanity-check model capacity
+    min_epochs: 1                 # prevents early stopping
     max_epochs: 200
     accelerator: gpu
     log_every_n_steps: 1
-    deterministic: False
+    deterministic: False          # allow PyTorch to use non-deterministic algorithms
     strategy: ddp
     check_val_every_n_epoch: 2
-    accumulate_grad_batches: 2
+    accumulate_grad_batches: 2  # accumulate gradient over k * num_GPUs batches
   checkpointer:
     dirpath: ckpt/${experiment.wandb.project}/${experiment.wandb.name}/${now:%Y-%m-%d}_${now:%H-%M-%S}
     save_last: True

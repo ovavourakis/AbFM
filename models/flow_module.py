@@ -292,6 +292,12 @@ class FlowModule(LightningModule):
         )
 
     def predict_step(self, batch, batch_idx):
+        '''
+        Inference call, requires no input pdb, just a batch of 
+        desired num_res and a sample_id. 
+        See experiments/utils.py -> LengthDataset().
+        '''
+        
         device = f'cuda:{torch.cuda.current_device()}'
         interpolant = Interpolant(self._infer_cfg.interpolant) 
         interpolant.set_device(device)

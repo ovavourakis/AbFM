@@ -42,7 +42,7 @@ inference:
     # in range(min_length, max_length, length_step)
     length_step: 1
 
-    # Subset of lengths to sample. If null, sample all targets.
+    # Subset (explicit list) of lengths to sample. If null, sample all targets.
     length_subset: null
 
     overwrite: False

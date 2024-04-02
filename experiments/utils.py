@@ -8,6 +8,13 @@ from pytorch_lightning.utilities.rank_zero import rank_zero_only
 
 
 class LengthDataset(torch.utils.data.Dataset):
+    """
+    Dummy dataset containing just protein lengths and sample ids 
+    for use during inference. To be wrapped in a DataLoader.
+
+    TODO: could be parallelized for speedier inference, but this could
+    likely also be done within the DataLoader wrapper
+    """
     def __init__(self, samples_cfg):
         self._samples_cfg = samples_cfg
         all_sample_lengths = range(
