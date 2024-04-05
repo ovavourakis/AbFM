@@ -175,6 +175,7 @@ class Interpolant:
             scaling * d_t, rotmats_1, rotmats_t)
 
     # TODO: consider implementing a better integrator (not Euler) - could maybe use scipy.integrate.odeint somehow?
+    # TODO: may require re-write for two-chain inference
     def sample(
             self,
             num_batch,
