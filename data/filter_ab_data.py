@@ -51,7 +51,7 @@ df['concatCDR_aa'] = cdr_aa_heavy + cdr_aa_light
 print('writing out full dataset')
 df.to_csv(out_filtered_csv, index=False)
 
-cols_to_keep = ['oas_id', 'pdb_path', 'seqlen', 'cluster_id', 'split', 'full_seq',
-                'concatCDR_aa', 'cdr1_aa_heavy', 'cdr2_aa_heavy', 'cdr3_aa_heavy', 'cdr1_aa_light', 'cdr2_aa_light', 'cdr3_aa_light', 
-                 
+cols_to_keep = ['oas_id', 'pdb_path', 'seqlen', 'cluster_id', 'split', 'full_seq', 'sequence_heavy', 'sequence_light', 'locus_heavy', 'locus_light',
+                'cdr1_aa_heavy', 'cdr2_aa_heavy', 'cdr3_aa_heavy', 'cdr1_aa_light', 'cdr2_aa_light', 'cdr3_aa_light', 
+                'concatCDR_aa', 
                 'ANARCI_numbering_heavy', 'ANARCI_numbering_light']

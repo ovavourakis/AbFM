@@ -29,6 +29,7 @@ class NodeEmbedder(nn.Module):
         b, num_res, device = mask.shape[0], mask.shape[1], mask.device
 
         # [b, n_res, c_pos_emb]
+        # TODO: pass in batch instead to allow for sequence-gap in two-chain proteins
         pos = torch.arange(num_res, dtype=torch.float32).to(device)[None]
         pos_emb = get_index_embedding(
             pos, self.c_pos_emb, max_len=2056

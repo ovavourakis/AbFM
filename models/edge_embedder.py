@@ -41,6 +41,8 @@ class EdgeEmbedder(nn.Module):
         num_batch, num_res, _ = s.shape
         p_i = self.linear_s_p(s)
         cross_node_feats = self._cross_concat(p_i, num_batch, num_res)
+        # TODO: change for dual-chain proteins - pass in batch instead!
+        # TODO: check if similar construct anywhere else
         pos = torch.arange(
             num_res, device=s.device).unsqueeze(0).repeat(num_batch, 1)
         relpos_feats = self.embed_relpos(pos)

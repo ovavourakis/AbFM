@@ -201,6 +201,8 @@ class Interpolant:
 
         prot_traj = [(trans_0, rotmats_0)]
         clean_traj = []
+
+        # TODO: add the precie sequence indices to the batch before this point
         for t_2 in ts[1:]:
 
             # Run model.
