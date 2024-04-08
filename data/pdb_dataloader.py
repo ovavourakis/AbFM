@@ -144,7 +144,7 @@ class PdbDataset(Dataset):
         res_idx = processed_feats['residue_index']
         return {
             'aatype': chain_feats['aatype'],
-            'res_idx': res_idx - np.min(res_idx) + 1, # re-index residues starting at 1, preserving gaps
+            'res_idx': res_idx - np.min(res_idx), # + 1, # re-index residues starting at 0, preserving gaps
             'rotmats_1': rotmats_1,
             'trans_1': trans_1,
             'res_mask': torch.tensor(processed_feats['bb_mask']).int(),

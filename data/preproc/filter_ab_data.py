@@ -21,6 +21,7 @@ MAX_SEQ_LEN = 260
 col_drop_filters = ['_aa_', '_alignment_', 'junction', 'cdr', 'fwr', 'fwk', 'fwl']
 
 all_metadata_csv = "/vols/opig/users/vavourakis/data/OAS_models/OAS_paired_all.csv"
+# all_metadata_csv = "/vols/opig/users/vavourakis/data/OAS_models/f20.csv"
 splits_csv = "/vols/opig/users/vavourakis/data/oas_splits.csv"
 strucs_dir = "/vols/opig/users/vavourakis/data/OAS_models/structures"
 out_filtered_csv = "/vols/opig/users/vavourakis/data/OAS_models/OAS_paired_filtered.csv"

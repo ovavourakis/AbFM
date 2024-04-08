@@ -8,10 +8,10 @@ import os
 import multiprocessing as mp
 import time
 from Bio import PDB
+from Bio.PDB import Chain, Residue
 import numpy as np
 import mdtraj as md
 
-# TODO: fix imports
 from data import utils as du 
 from data import parsers
 from data import errors
@@ -51,17 +51,46 @@ parser.add_argument(
 
 
 def process_file(file_path: str, write_dir: str):
-    # TODO: will have to be adapted for antibodies
-
-    """Processes antibody PDB file into usable, smaller pickles.
+    """
+    Processes antibody PDB file into usable, smaller pickles.
+    Notably combines heavy and light chains into a single chain called 'M'
+    (merged).
 
     Args:
         file_path: Path to file to read.
         write_dir: Directory to write pickles to.
 
     Returns:
-        Saves processed protein to pickle and returns metadata.
-        TODO: pickle elements documentation
+        Saves extracted protein features to pickled dict and returns metadata.
+        Pickle contains the following keys:
+            - atom_positions: np.ndarray of shape (N, 37, 3) with atom positions.
+            - aa_type: np.ndarray of shape (N,) with amino acid types for both 
+                chains (numeric; heavy chain first).
+            - atom_mask: np.ndarray of shape (N, 37) with atom masks.
+            - residue_index: np.ndarray of shape (N,) with residue indices 
+                (heavy chain first, light chain index skips to 1001).
+            - chain_index: np.ndarray of shape (N,) with chain indices.
+                (should contain only '38' repeated N times, the encoding of 'M',
+                as per data.utils.chain_str_to_int())
+            - b_factors: np.ndarray of shape (N, 37) with B-factors.
+            - bb_mask: np.ndarray of shape (N,) with backbone masks. 
+                (whether to inlcude the C-alpha of this residue)
+            - bb_positions: np.ndarray of shape (N, 3) with backbone C-alpha positions.
+            - modeled_idx: np.ndarray of shape (M,) with indices of modeled residues.
+                (does NOT contain index skip for start of light chain)
+        Metadata contains the following columns:
+            - all columns in the input csv, except oas_id and seqlen
+            - pdb_name: name of the PDB file
+            - processed_path: path to the pickled file
+            - raw_path: path to the raw PDB file
+            - num_chains: number of chains in the unprocessed PDB file (should be 2)
+            - seq_len: total sequence length of the complex (heavy+light chain)
+                (we enforce agreement with seqlen in input csv)
+            - modeled_seq_len: sequence length of the complex with only modeled residues
+                (should hopefully agree with seq_len)
+            - coil_percent: percent of residues in coil conformation
+            - helix_percent: percent of residues in helix conformation
+            - strand_percent: percent of residues in strand conformation
 
     Raises:
         DataError if a known filtering rule is hit.
@@ -72,57 +101,64 @@ def process_file(file_path: str, write_dir: str):
     metadata['pdb_name'] = pdb_name
 
     processed_path = os.path.join(write_dir, f'{pdb_name}.pkl')
-    # TODO: change this to be relative path from directory root
-    metadata['processed_path'] = os.path.abspath(processed_path)
+    metadata['processed_path'] = os.path.abspath(processed_path)        # TODO: change this to be relative path from directory root
     metadata['raw_path'] = file_path
     parser = PDB.PDBParser(QUIET=True)
     structure = parser.get_structure(pdb_name, file_path)
 
-    # get chains
-    struct_chains = {
-        chain.id.upper(): chain
-        for chain in structure.get_chains()}
-    
+    # Pre-Processing
     # count chains
+    struct_chains = {chain.id.upper() : chain for chain in structure.get_chains()}
     num_chains = len(struct_chains)
     if num_chains != 2:
         raise errors.DataError(f'Expected 2 chains, got {num_chains} in file {file_path}.')
     metadata['num_chains'] = num_chains
-
+    
     # ensure chains have correct IDs
     if 'H' not in struct_chains or 'L' not in struct_chains:
         raise errors.DataError(f'Expected chains H and L, got {list(struct_chains.keys())} in file {file_path}.')
 
-    # extract features
-
+    # offset light-chain indices by 1000                                                # NOTE: index definition
+    modified_light_chain = Chain.Chain("L")
+    offset = 1000
+    for res in struct_chains['L']:
+        new_id = (res.id[0], res.id[1] + offset, res.id[2])
+        modified_res = Residue.Residue(new_id, res.resname, res.segid)
+        for atom in res:
+            modified_res.add(atom)
+        modified_light_chain.add(modified_res)
+    
+    # merge modified light chain and heavy chain into a single chain
+    merged_chain = Chain.Chain("M")
+    for chain in [struct_chains['H'], modified_light_chain]:
+        for res in chain:
+            merged_chain.add(res)
+    struct_chains = {"M": merged_chain}
+ 
+    # Extract Features
     # bb_positions, atom_positions, masks
     struct_feats = []
     all_seqs = set()
     for chain_id, chain in struct_chains.items():
-        # TODO: change for antibodies! - not one protein per chain! re-number second chain
-
-        chain_id = du.chain_str_to_int(chain_id)            # ascii indices of 'H' and 'L'
-        chain_prot = parsers.process_chain(chain, chain_id)
+        chain_id = du.chain_str_to_int(chain_id) # ascii index of 'M'
+        chain_prot = parsers.process_chain(chain, chain_id)                             # NOTE: index definition
         chain_dict = dataclasses.asdict(chain_prot)
         chain_dict = du.parse_chain_feats(chain_dict)
         all_seqs.add(tuple(chain_dict['aatype']))
         struct_feats.append(chain_dict)
-    if len(all_seqs) == 1:
-        metadata['quaternary_category'] = 'homomer'
-    else:
-        metadata['quaternary_category'] = 'heteromer'
+    if len(all_seqs) != 1:
+        raise errors.DataError(f'Failed to combine chains for file {file_path}.')
     complex_feats = du.concat_np_features(struct_feats, False)
 
     # aa sequence and sequence length
     complex_aatype = complex_feats['aatype']
     metadata['seq_len'] = len(complex_aatype)
     modeled_idx = np.where(complex_aatype != 20)[0] # no unnatural AAs
-    if np.sum(complex_aatype != 20) == 0:
-        raise errors.LengthError('No modeled residues') # all-unnatural AAs
-    min_modeled_idx = np.min(modeled_idx)
-    max_modeled_idx = np.max(modeled_idx)
-    metadata['modeled_seq_len'] = max_modeled_idx - min_modeled_idx + 1
-    complex_feats['modeled_idx'] = modeled_idx
+    if np.sum(complex_aatype != 20) == 0:  # all-unnatural AAs
+        raise errors.LengthError('Protein contains no residues that are modelled (natural AAs).')
+    min_modeled_idx, max_modeled_idx = np.min(modeled_idx), np.max(modeled_idx)
+    metadata['modeled_seq_len'] = max_modeled_idx - min_modeled_idx + 1                 # NOTE: index definition
+    complex_feats['modeled_idx'] = modeled_idx                                          # NOTE: index definition
     
     # secondary structure and radius of gyration
     try:
@@ -132,9 +168,9 @@ def process_file(file_path: str, write_dir: str):
         pdb_ss = md.compute_dssp(traj, simplified=True)
         # DG calculation
         pdb_dg = md.compute_rg(traj)
-        os.remove(file_path)
+        # os.remove(file_path)
     except Exception as e:
-        os.remove(file_path)
+        # os.remove(file_path)
         raise errors.DataError(f'Mdtraj failed with error {e}')
 
     chain_dict['ss'] = pdb_ss[0]
@@ -157,9 +193,7 @@ def process_serially(all_paths, write_dir):
     for i, file_path in enumerate(all_paths):
         try:
             start_time = time.time()
-            metadata = process_file(
-                file_path,
-                write_dir)
+            metadata = process_file(file_path, write_dir)
             elapsed_time = time.time() - start_time
             print(f'Finished {file_path} in {elapsed_time:2.2f}s')
             all_metadata.append(metadata)
@@ -174,9 +208,7 @@ def process_fn(
         write_dir=None):
     try:
         start_time = time.time()
-        metadata = process_file(
-            file_path,
-            write_dir)
+        metadata = process_file(file_path, write_dir)
         elapsed_time = time.time() - start_time
         if verbose:
             print(f'Finished {file_path} in {elapsed_time:2.2f}s')
@@ -201,35 +233,36 @@ def main(args):
     else:
         metadata_file_name = 'metadata.csv'
     metadata_path = os.path.join(write_dir, metadata_file_name)
-    print(f'Files will be written to {write_dir}')
+    print(f'Files will be written to {write_dir}.\n')
 
     # Process each mmcif file
     if args.num_processes == 1 or args.debug:
-        all_metadata = process_serially(
-            all_file_paths,
-            write_dir)
+        all_metadata = process_serially(all_file_paths, write_dir)
     else:
         # reduce it down to a single-argument function ...
-        _process_fn = fn.partial(
-            process_fn,
-            verbose=args.verbose,
-            write_dir=write_dir)
+        _process_fn = fn.partial(process_fn, 
+                                 verbose=args.verbose, 
+                                 write_dir=write_dir
+        )
         # ... which can then be passed to a parallel pool.map()
         with mp.Pool(processes=args.num_processes) as pool:
             all_metadata = pool.map(_process_fn, all_file_paths)
         all_metadata = [x for x in all_metadata if x is not None]
     metadata_df = pd.DataFrame(all_metadata)
 
-    # TODO: merge with filtered_csv; filter duplicate columns like pdb_name/oas_id
+    merged_df = pd.merge(metadata_df, filtered_csv, 
+                         left_on='pdb_name', right_on='oas_id', how='inner')
+    assert all(merged_df['pdb_name'] == merged_df['oas_id']), "Entries in 'pdb_name' and 'oas_id' do not match."
+    assert all(merged_df['seqlen'] == merged_df['seq_len']), "The 'seqlen' and 'seq_len' columns do not match."
+    merged_df.drop(columns=['oas_id', 'seqlen'], inplace=True)
 
-    metadata_df.to_csv(metadata_path, index=False)
-    succeeded = len(all_metadata)
-    print(
-        f'Finished processing {succeeded}/{total_num_paths} files')
+    merged_df.to_csv(metadata_path, index=False)
+    succeeded = len(merged_df)
+    print(f'Finished processing {succeeded}/{total_num_paths} files.')
 
 
 if __name__ == "__main__":
-    # Don't use GPU
+    # don't use GPU
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
     args = parser.parse_args()
