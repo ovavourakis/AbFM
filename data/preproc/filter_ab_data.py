@@ -16,12 +16,12 @@ import os
 from multiprocessing import Pool
 from utils import ANARCIs_to_sequence
 
+NUM_PROC = 8 
 MIN_SEQ_LEN = 215
 MAX_SEQ_LEN = 260
 col_drop_filters = ['_aa_', '_alignment_', 'junction', 'cdr', 'fwr', 'fwk', 'fwl']
 
 all_metadata_csv = "/vols/opig/users/vavourakis/data/OAS_models/OAS_paired_all.csv"
-# all_metadata_csv = "/vols/opig/users/vavourakis/data/OAS_models/f20.csv"
 splits_csv = "/vols/opig/users/vavourakis/data/oas_splits.csv"
 strucs_dir = "/vols/opig/users/vavourakis/data/OAS_models/structures"
 out_filtered_csv = "/vols/opig/users/vavourakis/data/OAS_models/OAS_paired_filtered.csv"
@@ -54,7 +54,7 @@ if __name__ == '__main__':
     print(f'{len(df)} entries after filtering\n')
 
     print(f'wrangling sequences')
-    with Pool(processes=24) as pool:
+    with Pool(processes=NUM_PROC) as pool:
         results = pool.map(process_row, [row for _, row in df.iterrows()])
     df2 = pd.DataFrame(results, columns=['fwr1_h', 'cdr1_h', 'fwr2_h', 'cdr2_h', 'fwr3_h', 'cdr3_h', 'fwr4_h',
                                          'fwr1_l', 'cdr1_l', 'fwr2_l', 'cdr2_l', 'fwr3_l', 'cdr3_l', 'fwr4_l',
