@@ -1,4 +1,8 @@
-"""PDB data loader."""
+"""
+Data loader for antibody data stored as pre-processed pickles of 
+features derived from PDBs (see preproc/ subdirectory).
+"""
+
 import math
 import torch
 import tree
@@ -27,12 +31,13 @@ class PdbDataModule(LightningDataModule):
     def setup(self, stage: str):
         self._train_dataset = PdbDataset(
             dataset_cfg=self.dataset_cfg,
-            is_training=True,
+            type='train',
         )
         self._valid_dataset = PdbDataset(
             dataset_cfg=self.dataset_cfg,
-            is_training=False,
+            type='val',                                                                         # TODO: fix
         )
+                                                                                                # TODO: add _test_dataset
 
     def train_dataloader(self, rank=None, num_replicas=None):
         num_workers = self.loader_cfg.num_workers
@@ -50,7 +55,7 @@ class PdbDataModule(LightningDataModule):
             persistent_workers=True if num_workers > 0 else False,
         )
 
-    def val_dataloader(self):
+    def val_dataloader(self):                                                                   # TODO: fix
         return DataLoader(
             self._valid_dataset,
             sampler=DistributedSampler(self._valid_dataset, shuffle=False),
@@ -62,23 +67,26 @@ class PdbDataModule(LightningDataModule):
 
 class PdbDataset(Dataset):
     """
-    Requires pre-processed PDB data, using process_pdb_files.py.
+    Dataset of antibody features derived from PDBs, stored as 
+    pre-processed pickles (see process_ab_pdb_files.py).
     """
     def __init__(
             self,
             *,
             dataset_cfg,
-            is_training,
+            type=None,     # options are: 'train', 'valid', 'test'
         ):
         self._log = logging.getLogger(__name__)
-        self._is_training = is_training
+        if type not in ['train', 'valid', 'test']:
+            raise ValueError(f'Unknown dataset type {type}.')
+        self._type = type
         self._dataset_cfg = dataset_cfg
         self._init_metadata()
         self._rng = np.random.default_rng(seed=self._dataset_cfg.seed)
 
     @property
-    def is_training(self):
-        return self._is_training
+    def type(self):
+        return self._type
 
     @property
     def dataset_cfg(self):
@@ -86,29 +94,33 @@ class PdbDataset(Dataset):
 
     def _init_metadata(self):
         """Initialize metadata."""
-
-        # Process CSV with different filtering criteria.
         pdb_csv = pd.read_csv(self.dataset_cfg.csv_path)
-        self.raw_csv = pdb_csv
+        pdb_csv = pdb_csv[pdb_csv.split == self.type]
+
+        # apply filters specified in config
         pdb_csv = pdb_csv[pdb_csv.modeled_seq_len <= self.dataset_cfg.max_num_res]
         pdb_csv = pdb_csv[pdb_csv.modeled_seq_len >= self.dataset_cfg.min_num_res]
         if self.dataset_cfg.subset is not None:
             pdb_csv = pdb_csv.iloc[:self.dataset_cfg.subset]
         pdb_csv = pdb_csv.sort_values('modeled_seq_len', ascending=False)
 
+
+        # TODO: firm edits above this line --------------------------------------------
+        # TODO: maybe just do this for train set
+        self.csv = pdb_csv
+        self._log.info(f'{self.type} dataset comprises {len(self.csv)} examples.')
+
         # training- or validation-specific logic
-        if self.is_training:
-            self.csv = pdb_csv
-            self._log.info(
-                f'Training set comprises {len(self.csv)} examples.')
-        else:
+        if self.type == 'valid':
+            # need additional dataset of different lengths (without structures) for validation 
+
             # pare down to num_eval_lengths different lengths to evaluate on
-            eval_csv = pdb_csv[pdb_csv.modeled_seq_len <= self.dataset_cfg.min_eval_length]
+            eval_csv = pdb_csv[pdb_csv.modeled_seq_len <= self.dataset_cfg.max_eval_length]
             all_lengths = np.sort(eval_csv.modeled_seq_len.unique())
             length_indices = (len(all_lengths) - 1) * np.linspace(
                 0.0, 1.0, self.dataset_cfg.num_eval_lengths)
             length_indices = length_indices.astype(int)
-            eval_lengths = all_lengths[length_indices]
+            eval_lengths = all_lengths[length_indices]``
             eval_csv = eval_csv[eval_csv.modeled_seq_len.isin(eval_lengths)]
 
             # Fix a random seed to get the same split each time.

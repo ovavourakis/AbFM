@@ -1,13 +1,13 @@
 data:
   dataset:
     seed: 123
-    max_num_res: 300 
+    max_num_res: 260 
     cache_num_res: 0
-    min_num_res: 200
+    min_num_res: 215
     subset: null                # take 1st k instances from dataset that fit the seq-length criteria (null = all)
     samples_per_eval_length: 5  # sample k seqs (WITH replacement) per seq-length to eval on
     num_eval_lengths: 8         # num different seq-lengths to eval on
-    min_eval_length: 500        # TODO: should be MAX eval length accroding to code logic
+    max_eval_length: 260        # max seq-length to eval on
     csv_path: ./preprocessed/metadata.csv # CSV for metadata and paths to preprocessed data
   # Config for DataLoaders
   loader:
