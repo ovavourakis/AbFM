@@ -1,5 +1,6 @@
 """
 Script to pre-filter antibody data. Run on many CPU cores.
+Sets up files to be used in pre-processing PDBs (process_ab_pdb_files.py).
 
 * use ImmuneBuilder dataset from https://zenodo.org/records/7258553
 * merge with pre-defined train/val/test splits from https://zenodo.org/records/8164693
@@ -9,6 +10,8 @@ Script to pre-filter antibody data. Run on many CPU cores.
 * keep instances with sequence length between MIN_SEQ_LEN and MAX_SEQ_LEN
 * eliminate sequences with missing PDBs
 
+Usage:
+python filter_ab_data.py
 """
 import pandas as pd
 import os

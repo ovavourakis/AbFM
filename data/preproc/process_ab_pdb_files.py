@@ -1,4 +1,14 @@
-"""Script for preprocessing PDB files."""
+"""
+Script for preprocessing antibody PDB files, each of which
+should contain just two chains (heavy and light), denoted H and L
+(Fv only). The chains are merged into a single chain 'M' (merged).
+
+Requires a pre-filtered CSV file with PDB paths and metadata
+(produced by filter_ab_data.py).
+
+Usage:
+python process_ab_pdb_files.py --pdb_dir /vols/opig/users/vavourakis/data/OAS_models/structures --csv_path /vols/opig/users/vavourakis/data/OAS_models/OAS_paired_filtered.csv --num_processes 8 --write_dir /vols/opig/users/vavourakis/data/ab_processed
+"""
 
 import argparse
 import dataclasses
@@ -24,12 +34,10 @@ parser.add_argument(
     '--pdb_dir',
     help='Path to directory with PDB files.',
     type=str)
-
 parser.add_argument(
     '--csv_path',
     help='Path to pre-filtered CSV file with PDB paths and metadata.',
     type=str)
-
 parser.add_argument(
     '--num_processes',
     help='Number of processes.',
