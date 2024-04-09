@@ -5,10 +5,12 @@ data:
     cache_num_res: 0
     min_num_res: 215
     subset: null                # take 1st k instances from dataset that fit the seq-length criteria (null = all)
-    samples_per_eval_length: 5  # sample k seqs (WITH replacement) per seq-length to eval on
-    num_eval_lengths: 8         # num different seq-lengths to eval on
-    max_eval_length: 260        # max seq-length to eval on
+    samples_per_gen_length: 5  # sample k seqs (WITH replacement) per seq-length to eval on
+    num_gen_lengths: 8          # num different seq-lengths to generate at during validation
+    max_gen_length: 260         # max seq-length to generate at during validation
     csv_path: ./preprocessed/metadata.csv # CSV for metadata and paths to preprocessed data
+    # TODO: add config for how many real structures to validate on?
+    # TODO: have separate congis for valid and test (more samples for test)
   # Config for DataLoaders
   loader:
     num_workers: 4
