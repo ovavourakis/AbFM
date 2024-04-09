@@ -1,25 +1,66 @@
 data:
+  module:
+    inference_only_mode: False
   dataset:
     seed: 123
-    max_num_res: 260 
-    cache_num_res: 0
-    min_num_res: 215
-    subset: null                # take 1st k instances from dataset that fit the seq-length criteria (null = all)
-    samples_per_gen_length: 5  # sample k seqs (WITH replacement) per seq-length to eval on
-    num_gen_lengths: 8          # num different seq-lengths to generate at during validation
-    max_gen_length: 260         # max seq-length to generate at during validation
-    csv_path: ./preprocessed/metadata.csv # CSV for metadata and paths to preprocessed data
+    pdbs: # config for known structures
+      csv_path: ./preprocessed/metadata.csv # metadata and paths to preprocessed data per antibody
+      min_num_res: 215
+      max_num_res: 260
+      subset: null # take 1st k instances from dataset that fit the seq-length criteria (null = all)
+    train:
+      use_pdbs: True # TODO: these aren't being used
+      pdbs_per_val: None # all pdbs
+      generate: False
+    valid:
+      use_pdbs: True
+      pdbs_per_val: 100 
+      generate: True
+      samples:
+        min_length: ${data.dataset.pdbs.min_num_res}
+        max_length: ${data.dataset.pdbs.min_num_res}
+        min_length_heavy: 109
+        max_length_heavy: 145
+        min_length_light: 99
+        max_length_light: 121
+
+        samples_per_length: 1
+        length_step: 1
+        length_subset: null
+        overwrite: False
+    test:
+      use_pdbs: True
+      pdbs_per_val: None # all pdbs
+      generate: True
+      samples:
+        min_length: ${data.dataset.pdbs.min_num_res}
+        max_length: ${data.dataset.pdbs.min_num_res}
+        min_length_heavy: 109
+        max_length_heavy: 145
+        min_length_light: 99
+        max_length_light: 121
+
+        samples_per_length: 5
+        length_step: 1
+        length_subset: null
+        overwrite: False
+
+    loaders:
+      num_workers: 4
+      prefetch_factor: 10
+
+    gens: # config for structures to be generated (during val/test)
+      samples_per_gen_length: 5   # sample k seqs (WITH replacement) per seq-length to eval on
+      num_gen_lengths: 8          # num different seq-lengths to generate at during validation
+      max_gen_length: 260         # max seq-length to generate at during validation
+    
     # TODO: add config for how many real structures to validate on?
     # TODO: have separate congis for valid and test (more samples for test)
-  # Config for DataLoaders
-  loader:
-    num_workers: 4
-    prefetch_factor: 10
-  # Config for LengthBatcher (distributed batch sampler)
-  # actual_batch_size = min(max_batch_size, max_num_res_squared // seq_len^2 + 1)
-  sampler:     
+  
+  sampler: # config for batch sampler (LengthBatcher)
     max_batch_size: 100
     max_num_res_squared: 500_000
+    # NOTE: actual_batch_size = min(max_batch_size, max_num_res_squared // seq_len^2 + 1)
 
 interpolant:
   min_t: 1e-2

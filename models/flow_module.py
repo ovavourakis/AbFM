@@ -292,6 +292,7 @@ class FlowModule(LightningModule):
         )
 
     def predict_step(self, batch, batch_idx):
+        # TODO: this is for inference, also do testing as test_step() [is pre-implemented]
         '''
         Inference call, requires no input pdb, just a batch of 
         desired num_res and a sample_id. 

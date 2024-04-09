@@ -1,3 +1,5 @@
+# TODO: update after changes to base.yaml
+
 # Configuration for inference on SE(3) diffusion experiments.
 defaults:
   - base
@@ -27,6 +29,7 @@ inference:
       num_timesteps: 100
     self_condition: True
 
+# TODO: should be moved under data
   samples:
 
     # Number of backbone samples per sequence length.

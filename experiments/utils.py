@@ -6,47 +6,6 @@ import numpy as np
 from analysis import utils as au
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
 
-
-class LengthDataset(torch.utils.data.Dataset):
-    """
-    Dummy dataset containing just protein lengths and sample ids 
-    for use during inference. To be wrapped in a DataLoader.
-
-    TODO: requires re-write for two-chain inference
-
-    TODO: could be parallelized for speedier inference, but this could
-    likely also be done within the DataLoader wrapper
-    """
-    def __init__(self, samples_cfg):
-        self._samples_cfg = samples_cfg
-        all_sample_lengths = range(
-            self._samples_cfg.min_length,
-            self._samples_cfg.max_length+1,
-            self._samples_cfg.length_step
-        )
-        if samples_cfg.length_subset is not None:
-            all_sample_lengths = [
-                int(x) for x in samples_cfg.length_subset
-            ]
-        all_sample_ids = []
-        for length in all_sample_lengths:
-            for sample_id in range(self._samples_cfg.samples_per_length):
-                all_sample_ids.append((length, sample_id))
-        self._all_sample_ids = all_sample_ids
-
-    def __len__(self):
-        return len(self._all_sample_ids)
-
-    def __getitem__(self, idx):
-        num_res, sample_id = self._all_sample_ids[idx]
-        batch = {
-            'num_res': num_res,
-            'sample_id': sample_id,
-        }
-        return batch
-
-
-
 def save_traj(
         sample: np.ndarray,
         bb_prot_traj: np.ndarray,
