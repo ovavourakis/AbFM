@@ -35,6 +35,11 @@ class PdbDataModule(LightningDataModule):
 
     def setup(self, stage: str):
         # TODO: re-write with combined dataset
+
+        # load once here, split here, pass splitted into individual datasets
+
+
+        
         if self.module_cfg.inference_only_mode:
             # dummy dataset of just antibody params
             # to generate de novo samples with
