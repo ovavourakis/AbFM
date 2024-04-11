@@ -115,53 +115,68 @@ class Interpolant:
         )
         return _rots_diffuse_mask(rotmats_t, rotmats_1, res_mask)
 
-    def corrupt_batch(self, batch):
-        # TODO: continute from here ------------------------------------------------
-        
+    def corrupt_batch(self, batch):        
         # to be called on structure batches only! (not during inference/sampling!)
-
         noisy_batch = copy.deepcopy(batch)
-
         # [B, N, 3]
         trans_1 = batch['trans_1']  # Angstrom
-
         # [B, N, 3, 3]
         rotmats_1 = batch['rotmats_1']
-
         # [B, N]
         res_mask = batch['res_mask']
         num_batch, _ = res_mask.shape
-
         # [B, 1]
         t = self.sample_t(num_batch)[:, None]
+
+        # NOTE: WARNING !!! newly added !!! ========================
+        t = self.sample_kappa(t, component='trans')
+        # ==========================================================
+
         noisy_batch['t'] = t
 
-        # Apply corruptions
+        # apply corruptions
         trans_t = self._corrupt_trans(trans_1, t, res_mask)
         noisy_batch['trans_t'] = trans_t
 
-        # WARNING !!!
-        # TODO: should probably instead pass t_new = rot_sample_kappa(t) to _corrupt_rotmats 
+        # NOTE: WARNING !!! newly added !!! ========================
+        t_rot = self.sample_kappa(t, component='rots')
+        noisy_batch['t_rot'] = t_rot
+        rotmats_t = self._corrupt_rotmats(rotmats_1, t_rot, res_mask)
+        # ==========================================================
 
-        rotmats_t = self._corrupt_rotmats(rotmats_1, t, res_mask)
+        # rotmats_t = self._corrupt_rotmats(rotmats_1, t, res_mask)
         noisy_batch['rotmats_t'] = rotmats_t
         return noisy_batch
     
-    def rot_sample_kappa(self, t):
-        
-        # WARNING !!!
-        # TODO: this is not being called anywhere
-        # should probably go in corrupt_batch(), just before _corrupt_rotmats() is called
+    def sample_kappa(self, t, component='rots'):
+        # ========================================================================
+        # NOTE: WARNING !!! changed from 'sample_schedule' to 'train_schedule' !!!
+        # ========================================================================
+        if component == 'rots':
+            schedule = self._rots_cfg.train_schedule
+            if schedule == 'exp':
+                exp_rate = self._rots_cfg.exp_rate
+        elif component == 'trans':
+            schedule = self._trans_cfg.train_schedule
+            if schedule == 'exp':
+                exp_rate = self._trans_cfg.exp_rate
+        else:
+            raise ValueError(
+                f'Unknown component {component}. Must be one of "rots" or "trans".')
 
-        if self._rots_cfg.sample_schedule == 'exp':
-            return 1 - torch.exp(-t*self._rots_cfg.exp_rate)
-        elif self._rots_cfg.sample_schedule == 'linear':
+        if schedule == 'exp':
+            return 1 - torch.exp(-t*exp_rate)
+        elif schedule == 'linear':
             return t
         else:
             raise ValueError(
-                f'Invalid schedule: {self._rots_cfg.sample_schedule}')
+                f'Invalid train schedule: {schedule}. Must be one of "exp" or "linear".')
 
-    def _trans_euler_step(self, d_t, t, trans_1, trans_t):
+    def _trans_euler_step(self, d_t, t, trans_1, trans_t):                                  # TODO: implement non-linear euler step for translations
+        if self._trans_cfg.sample_schedule != 'linear':
+            raise NotImplementedError(
+                "Non-linear euler step for translations not implemented.")
+            
         trans_vf = (trans_1 - trans_t) / (1 - t) # v_x in eq. (5) in FrameFlow paper
         return trans_t + trans_vf * d_t
 
