@@ -1,12 +1,38 @@
-# TODO: update after changes to base.yaml
+# TODO: update after changes to base.yaml and models
+# TODO: not sure how this overrides the base.yaml
+# TODO: possibly set up as its own thing, indpendent of base.yaml
 
-# Configuration for inference on SE(3) diffusion experiments.
 defaults:
   - base
   - _self_
+  
+data:
+  module:
+    inference_only_mode: True
+    loaders:
+        num_workers: 4
+        prefetch_factor: 10
+  samples:                                  # config for antibodies to generate
+    seed: 123                               # determines random length combos chosen for tot_length
+        min_length: 215
+        max_length: 260
+        min_length_heavy: 109
+        max_length_heavy: 145
+        min_length_light: 99
+        max_length_light: 121
+        samples_per_length: 4
+        length_step: 1
+        length_list: null                   # explicit list of lengths at which to generate
+        overwrite: False
+    bsampler:
+      num_batches_per_epoch_per_gpu: 1      # set close to samples_per_length*num_lengths/num_gpus/max_batch_size
+      num_struc_samples: null
+      max_batch_size: 90
+      max_num_res_squared: 500_000          # true_batch_size = min(max_batch_size, max_num_res_squared // seq_len^2 + 1)
+
+
 
 inference:
-
   # Use this to write with date-time stamp.
   name: run_${now:%Y-%m-%d}_${now:%H-%M}
   seed: 123
@@ -28,42 +54,3 @@ inference:
     sampling:
       num_timesteps: 100
     self_condition: True
-
-
-
-# TODO: should be moved under data
-data: # TODO: not sure if this overrides the base.yaml
-# TODO: this configuration is incorrect for the new DatModule/loader
-  samples:                          
-    samples_per_length: 5   # sample k seqs (WITH replacement) per seq-length to eval on
-    num_gen_lengths: 8          # num different seq-lengths to generate at during validation
-    max_gen_length: 260         # max seq-length to generate at during validation
-
-
-    bsampler:
-      num_batches_per_epoch_per_gpu: 2000
-      num_struc_samples: null
-      max_batch_size: 100
-      max_num_res_squared: 500_000    # true_batch_size = min(max_batch_size, max_num_res_squared // seq_len^2 + 1)
-
-
-
-  samples:
-
-    # Number of backbone samples per sequence length.
-    samples_per_length: 10
-
-    # Minimum sequence length to sample.
-    min_length: 60
-
-    # Maximum sequence length to sample.
-    max_length: 128
-
-    # gap between lengths to sample. i.e. this script will sample all lengths
-    # in range(min_length, max_length, length_step)
-    length_step: 1
-
-    # Subset (explicit list) of lengths to sample. If null, sample all targets.
-    length_subset: null
-
-    overwrite: False
