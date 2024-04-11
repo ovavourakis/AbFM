@@ -1,75 +1,61 @@
 data:
   module:
     inference_only_mode: False
+    loaders:
+        num_workers: 4
+        prefetch_factor: 10
   dataset:
-    seed: 123
-    pdbs: # config for known structures
+    pdbs:
       csv_path: ./preprocessed/metadata.csv # metadata and paths to preprocessed data per antibody
       min_num_res: 215
       max_num_res: 260
-      subset: null # take 1st k instances from dataset that fit the seq-length criteria (null = all)
+      subset: null                          # take 1st k instances from dataset that fit the seq-length criteria (null = all)
     train:
-      use_pdbs: True # TODO: these aren't being used
-      pdbs_per_val: None # all pdbs
-      generate: False
+      bsampler:                             # config for batch sampler
+        num_batches_per_epoch_per_gpu: 2000 # more than train_strucs/num_gpus/max_batch_size; same value as in FrameFlow
+        num_struc_samples: null             # train on all structures in train set
+        max_batch_size: 100
+        max_num_res_squared: 500_000        # true_batch_size = min(max_batch_size, max_num_res_squared // seq_len^2 + 1)   
     valid:
-      use_pdbs: True
-      pdbs_per_val: 100 
-      generate: True
+      use_pdbs: True                        # run validation on known structures
+      generate: True                        # also validate some de-novo generations
       samples:
-        seed: 123   # determines random length combos per tot_length
+        seed: 123                           # determines random length combos chosen for tot_length
         min_length: ${data.dataset.pdbs.min_num_res}
         max_length: ${data.dataset.pdbs.min_num_res}
         min_length_heavy: 109
         max_length_heavy: 145
         min_length_light: 99
         max_length_light: 121
-
         samples_per_length: 1
         length_step: 1
-        length_list: null
+        length_list: null                   # explicit list of lengths at which to generate
         overwrite: False
+      bsampler:                             # config for batch sampler
+        num_batches_per_epoch_per_gpu: 1    # set close to num_struc_samples/num_gpus/
+        num_struc_samples: 100
+        max_batch_size: 50
+        max_num_res_squared: 500_000        # true_batch_size = min(max_batch_size, max_num_res_squared // seq_len^2 + 1)   
     test:
-      use_pdbs: True
-      pdbs_per_val: None # all pdbs
-      generate: True
+      use_pdbs: True                        # run test on known structures
+      generate: True                        # also generate some de-novo structures and run tests on them
       samples:
+        seed: 123                           # determines random length combos chosen for tot_length
         min_length: ${data.dataset.pdbs.min_num_res}
         max_length: ${data.dataset.pdbs.min_num_res}
-        min_length_heavy: 109
-        max_length_heavy: 145
-        min_length_light: 99
-        max_length_light: 121
-
+        min_length_heavy: ${data.dataset.valid.min_length_heavy}
+        max_length_heavy: ${data.dataset.valid.max_length_heavy}
+        min_length_light: ${data.dataset.valid.min_length_light}
+        max_length_light: ${data.dataset.valid.max_length_light
         samples_per_length: 5
         length_step: 1
-        length_list: null
+        length_list: null                   # explicit list of lengths at which to generate
         overwrite: False
-
-    loaders:
-      num_workers: 4
-      prefetch_factor: 10
-
-    gens: # config for structures to be generated (during val/test)
-      samples_per_gen_length: 5   # sample k seqs (WITH replacement) per seq-length to eval on
-      num_gen_lengths: 8          # num different seq-lengths to generate at during validation
-      max_gen_length: 260         # max seq-length to generate at during validation
-    
-    # TODO: add config for how many real structures to validate on?
-    # TODO: have separate congis for valid and test (more samples for test)
-  
-  sampler: # config for batch sampler (LengthBatcher)
-    # rename to bsampler
-    # should have one of these for each of train, valid, test, sample
-    num_batches_per_epoch_per_gpu: 2000 # more than strucs/2/100; same as in FrameFlow
-    num_struc_samples: null
-    max_batch_size: 100
-    max_num_res_squared: 500_000
-    # NOTE: actual_batch_size = min(max_batch_size, max_num_res_squared // seq_len^2 + 1)
-
-
-
-
+      bsampler:                             # config for batch sampler
+        num_batches_per_epoch_per_gpu: 75   # set close to test_strucs/num_gpu/max_batch_size
+        num_struc_samples: null
+        max_batch_size: 100
+        max_num_res_squared: 500_000        # true_batch_size = min(max_batch_size, max_num_res_squared // seq_len^2 + 1)
 
 interpolant:
   min_t: 1e-2
