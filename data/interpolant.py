@@ -1,11 +1,11 @@
-import torch
-from data import so3_utils
-from data import utils as du
-from scipy.spatial.transform import Rotation
-from data import all_atom
 import copy
+import torch
+from scipy.spatial.transform import Rotation
 from scipy.optimize import linear_sum_assignment
 
+from data import so3_utils
+from data import utils as du
+from data import all_atom
 
 def _centered_gaussian(num_batch, num_res, device):
     # (num_res * xyz) gaussian noise for each protein
@@ -193,23 +193,22 @@ class Interpolant:
         return so3_utils.geodesic_t(
             scaling * d_t, rotmats_1, rotmats_t)
 
-    # TODO: consider implementing a better integrator (not Euler) - could maybe use scipy.integrate.odeint somehow?
-    # TODO: may require re-write for two-chain inference
-    def sample(
-            self,
-            num_batch,
-            num_res,
-            model,
-        ):
+    # TODO: consider implementing a better integrator (not Euler) - could maybe use scipy.integrate.odeint?
+    # TODO: may want to alter so can handle multiple samples of different length in batch - padding in res_mask (and elsewhere?)
+    # TODO: requires re-write for two-chain inference --------------------------------------------------------------
+    def sample(self, batch, model):
+        # to be called on ab-parameter batches during inference only!
+        # each batch contains a single sample
+        len_h, len_l = batch['len_h'], batch['len_l']
+        num_res, num_batch = len_h + len_l, len_h.shape[0]
+
         res_mask = torch.ones(num_batch, num_res, device=self._device)
 
-        # Set-up initial prior samples
+        # start with a sample from the prior distribution
         trans_0 = _centered_gaussian(
             num_batch, num_res, self._device) * du.NM_TO_ANG_SCALE
-        # NOTE: during sampling we start from uniform on SO3
-        # training used initial samples from IGSO3
-        rotmats_0 = _uniform_so3(num_batch, num_res, self._device)
-        batch = {
+        rotmats_0 = _uniform_so3(num_batch, num_res, self._device)      # NOTE: during sampling we start from uniform on SO3
+        batch = {                                                       #       training used initial samples from IGSO3
             'res_mask': res_mask,
         }
 

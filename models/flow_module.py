@@ -153,10 +153,14 @@ class FlowModule(LightningModule):
         }
 
     def validation_step(self, batch: Any, batch_idx: int):
+         # TODO: change this to use the new Length dataset
+
+
         res_mask = batch['res_mask']
         self.interpolant.set_device(res_mask.device)
         num_batch, num_res = res_mask.shape
         
+       
         samples = self.interpolant.sample(
             num_batch,
             num_res,
