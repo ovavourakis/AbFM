@@ -116,6 +116,10 @@ class Interpolant:
         return _rots_diffuse_mask(rotmats_t, rotmats_1, res_mask)
 
     def corrupt_batch(self, batch):
+        # TODO: continute from here ------------------------------------------------
+        
+        # to be called on structure batches only! (not during inference/sampling!)
+
         noisy_batch = copy.deepcopy(batch)
 
         # [B, N, 3]

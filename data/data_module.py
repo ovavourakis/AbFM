@@ -58,7 +58,7 @@ class PdbDataset(Dataset):
 
         return {
             'aatype': chain_feats['aatype'],
-            'res_idx': res_idx,
+            'res_idx': res_idx, # np.array; starting at 1 (VH) and 1001 (VL), preserving gaps
             'rotmats_1': rotmats_1,
             'trans_1': trans_1,
             'res_mask': torch.tensor(processed_feats['bb_mask']).int(),
@@ -159,10 +159,10 @@ class CombinedDataset(Dataset):
     
 class CombinedDatasetBatchSampler:
     """
-    Data-parallel, distributed batch sampler that groups proteins by length.
-    Each batch contains multiple proteins of the same length.
-
-    Requires pre-processed PDB data, using process_pdb_files.py.
+    Batches have shape in 
+        ([pdb_idx1, pdb_idx2,...], gen_idx) or
+        ([None], gen_idx) or
+        ([pdb_idx1, pdb_idx2,...], None).
     """
     def __init__(self, *, bsampler_cfg, 
                           CombinedDataset, 

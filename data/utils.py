@@ -345,49 +345,49 @@ def align_structures(
     return batch_positions_rotated, reference_positions, rotation_matrices
 
 
-def parse_pdb_feats(
-        pdb_name: str,
-        pdb_path: str,
-        scale_factor=1.,
-        # TODO: Make the default behaviour read all chains.
-        chain_id='A',
-    ):
-    # NOTE: this isn't being called anywhere
+# def parse_pdb_feats(
+#         pdb_name: str,
+#         pdb_path: str,
+#         scale_factor=1.,
+#         # TODO: Make the default behaviour read all chains.
+#         chain_id='A',
+#     ):
+#     # NOTE: this isn't being called anywhere
 
-    """
-    Args:
-        pdb_name: name of PDB to parse.
-        pdb_path: path to PDB file to read.
-        scale_factor: factor to scale atom positions.
-        mean_center: whether to mean center atom positions.
-    Returns:
-        Dict with CHAIN_FEATS features extracted from PDB with specified
-        preprocessing.
-    """
-    parser = PDB.PDBParser(QUIET=True)
-    structure = parser.get_structure(pdb_name, pdb_path)
-    struct_chains = {
-        chain.id: chain
-        for chain in structure.get_chains()}
+#     """
+#     Args:
+#         pdb_name: name of PDB to parse.
+#         pdb_path: path to PDB file to read.
+#         scale_factor: factor to scale atom positions.
+#         mean_center: whether to mean center atom positions.
+#     Returns:
+#         Dict with CHAIN_FEATS features extracted from PDB with specified
+#         preprocessing.
+#     """
+#     parser = PDB.PDBParser(QUIET=True)
+#     structure = parser.get_structure(pdb_name, pdb_path)
+#     struct_chains = {
+#         chain.id: chain
+#         for chain in structure.get_chains()}
 
-    def _process_chain_id(x):
-        chain_prot = process_chain(struct_chains[x], x)
-        chain_dict = dataclasses.asdict(chain_prot)
+#     def _process_chain_id(x):
+#         chain_prot = process_chain(struct_chains[x], x)
+#         chain_dict = dataclasses.asdict(chain_prot)
 
-        # Process features
-        feat_dict = {x: chain_dict[x] for x in CHAIN_FEATS}
-        return parse_chain_feats(
-            feat_dict, scale_factor=scale_factor)
+#         # Process features
+#         feat_dict = {x: chain_dict[x] for x in CHAIN_FEATS}
+#         return parse_chain_feats(
+#             feat_dict, scale_factor=scale_factor)
 
-    if isinstance(chain_id, str):
-        return _process_chain_id(chain_id)
-    elif isinstance(chain_id, list):
-        return {
-            x: _process_chain_id(x) for x in chain_id
-        }
-    elif chain_id is None:
-        return {
-            x: _process_chain_id(x) for x in struct_chains
-        }
-    else:
-        raise ValueError(f'Unrecognized chain list {chain_id}')
+#     if isinstance(chain_id, str):
+#         return _process_chain_id(chain_id)
+#     elif isinstance(chain_id, list):
+#         return {
+#             x: _process_chain_id(x) for x in chain_id
+#         }
+#     elif chain_id is None:
+#         return {
+#             x: _process_chain_id(x) for x in struct_chains
+#         }
+#     else:
+#         raise ValueError(f'Unrecognized chain list {chain_id}')
