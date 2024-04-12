@@ -7,21 +7,22 @@ from analysis import utils as au
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
 
 def save_traj(
-        sample: np.ndarray,
-        bb_prot_traj: np.ndarray,
-        x0_traj: np.ndarray,
-        diffuse_mask: np.ndarray,
+        sample: np.ndarray,         # final state as atom coords
+        bb_prot_traj: np.ndarray,   # entire trajectory as atom coords
+        x1_traj: np.ndarray,        # trajectory of final-state projections as atom coords
+        diffuse_mask: np.ndarray,   # which residues are diffused (N,)
+        res_idx: np.ndarray,        # residue index (N,)
         output_dir: str,
         aatype = None,
     ):
-    """Writes final sample and reverse diffusion trajectory.
+    """Writes final sample and CNF trajectory.
 
     Args:
         bb_prot_traj: [T, N, 37, 3] atom37 sampled diffusion states.
             T is number of time steps. First time step is t=eps,
             i.e. bb_prot_traj[0] is the final sample after reverse diffusion.
             N is number of residues.
-        x0_traj: [T, N, 3] x_0 predictions of C-alpha at each time step.
+        x1_traj: [T, N, 3] x_0 predictions of C-alpha at each time step.
         aatype: [T, N, 21] amino acid probability vector trajectory.
         res_mask: [N] residue mask.
         diffuse_mask: [N] which residues are diffused.
@@ -31,18 +32,18 @@ def save_traj(
         Dictionary with paths to saved samples.
             'sample_path': PDB file of final state of reverse trajectory.
             'traj_path': PDB file os all intermediate diffused states.
-            'x0_traj_path': PDB file of C-alpha x_0 predictions at each state.
+            'x1_traj_path': PDB file of C-alpha x_0 predictions at each state.
         b_factors are set to 100 for diffused residues and 0 for motif
         residues if there are any.
     """
 
-    # Write sample.
+    # write sample
     diffuse_mask = diffuse_mask.astype(bool)
     sample_path = os.path.join(output_dir, 'sample.pdb')
     prot_traj_path = os.path.join(output_dir, 'bb_traj.pdb')
-    x0_traj_path = os.path.join(output_dir, 'x0_traj.pdb')
+    x1_traj_path = os.path.join(output_dir, 'x1_traj.pdb')
 
-    # Use b-factors to specify which residues are diffused.
+    # use b-factors to specify which residues were generated
     b_factors = np.tile((diffuse_mask * 100)[:, None], (1, 37))
 
     sample_path = au.write_prot_to_pdb(
@@ -51,6 +52,7 @@ def save_traj(
         b_factors=b_factors,
         no_indexing=True,
         aatype=aatype,
+        res_idx=res_idx,
     )
     prot_traj_path = au.write_prot_to_pdb(
         bb_prot_traj,
@@ -58,18 +60,20 @@ def save_traj(
         b_factors=b_factors,
         no_indexing=True,
         aatype=aatype,
+        res_idx=res_idx,
     )
-    x0_traj_path = au.write_prot_to_pdb(
-        x0_traj,
-        x0_traj_path,
+    x1_traj_path = au.write_prot_to_pdb(
+        x1_traj,
+        x1_traj_path,
         b_factors=b_factors,
         no_indexing=True,
-        aatype=aatype
+        aatype=aatype,
+        res_idx=res_idx,
     )
     return {
         'sample_path': sample_path,
         'traj_path': prot_traj_path,
-        'x0_traj_path': x0_traj_path,
+        'x1_traj_path': x1_traj_path,
     }
 
 

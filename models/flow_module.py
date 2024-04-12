@@ -23,7 +23,7 @@ from pytorch_lightning.loggers.wandb import WandbLogger
 
 class FlowModule(LightningModule):
 
-    def __init__(self, cfg, folding_cfg=None):
+    def __init__(self, cfg):
         super().__init__()
         self._print_logger = logging.getLogger(__name__)
         self._exp_cfg = cfg.experiment
@@ -31,11 +31,8 @@ class FlowModule(LightningModule):
         self._data_cfg = cfg.data
         self._interpolant_cfg = cfg.interpolant
 
-        # Set-up vector field prediction model
-        self.model = FlowModel(cfg.model)
-
-        # Set-up interpolant
-        self.interpolant = Interpolant(cfg.interpolant)
+        self.model = FlowModel(cfg.model) # vector field prediction model
+        self.interpolant = Interpolant(cfg.interpolant) # handles noising and ODE
 
         self._sample_write_dir = self._exp_cfg.checkpointer.dirpath
         os.makedirs(self._sample_write_dir, exist_ok=True)
@@ -49,28 +46,31 @@ class FlowModule(LightningModule):
         
     def on_train_epoch_end(self):
         epoch_time = (time.time() - self._epoch_start_time) / 60.0
-        self.log(
-            'train/epoch_time_minutes',
-            epoch_time,
-            on_step=False,
-            on_epoch=True,
-            prog_bar=False
+        self.log('train/epoch_time_minutes', 
+                 epoch_time,
+                 on_step=False,
+                 on_epoch=True,
+                 prog_bar=False
         )
         self._epoch_start_time = time.time()
 
     def model_step(self, noisy_batch: Any):
-        # returns losses for each batch, as given in FrameDiff paper
+        # returns losses for a structure batch, as given in FrameDiff paper
         # see also eq. (6) in FrameFlow paper
         # every protein in a batch has the same length
         
         training_cfg = self._exp_cfg.training
         loss_mask = noisy_batch['res_mask']
         if training_cfg.min_plddt_mask is not None:
-            plddt_mask = noisy_batch['res_plddt'] > training_cfg.min_plddt_mask
-            loss_mask *= plddt_mask
+            if 'res_plddt' in noisy_batch:
+                plddt_mask = noisy_batch['res_plddt'] > training_cfg.min_plddt_mask
+                loss_mask *= plddt_mask
+            else:
+                self._print_logger.warning(
+                    "WARNING: 'res_plddt' not found in noisy_batch. Skipping pLDDT mask application.")
         num_batch, num_res = loss_mask.shape
 
-        # Ground truth labels
+        # ground truth labels
         gt_trans_1 = noisy_batch['trans_1']
         gt_rotmats_1 = noisy_batch['rotmats_1']
         rotmats_t = noisy_batch['rotmats_t']
@@ -78,12 +78,13 @@ class FlowModule(LightningModule):
             rotmats_t, gt_rotmats_1.type(torch.float32))
         gt_bb_atoms = all_atom.to_atom37(gt_trans_1, gt_rotmats_1)[:, :, :3] 
 
-        # Timestep used for normalization.
+        # timestep used for normalization
+        # NOTE: could also / additionally use the t_rot (if it differs) -> see. Interpolant.corrupt_batch()
         t = noisy_batch['t']
         norm_scale = 1 - torch.min(
             t[..., None], torch.tensor(training_cfg.t_normalize_clip))
         
-        # Model output predictions.
+        # fwd pass
         model_output = self.model(noisy_batch)
         pred_trans_1 = model_output['pred_trans']
         pred_rotmats_1 = model_output['pred_rotmats']
@@ -140,8 +141,9 @@ class FlowModule(LightningModule):
             t[:, 0] > training_cfg.aux_loss_t_pass
         )
         auxiliary_loss *= self._exp_cfg.training.aux_loss_weight
-        se3_vf_loss += auxiliary_loss
-        if torch.isnan(se3_vf_loss).any():
+
+        tot_loss = se3_vf_loss + auxiliary_loss
+        if torch.isnan(tot_loss).any():
             raise ValueError('NaN loss encountered')
         return {
             "bb_atom_loss": bb_atom_loss,
@@ -149,7 +151,8 @@ class FlowModule(LightningModule):
             "dist_mat_loss": dist_mat_loss,
             "auxiliary_loss": auxiliary_loss,
             "rots_vf_loss": rots_vf_loss,
-            "se3_vf_loss": se3_vf_loss
+            "se3_vf_loss": se3_vf_loss,
+            "tot_loss": tot_loss
         }
 
     def validation_step(self, batch: Any, batch_idx: int):
@@ -237,6 +240,7 @@ class FlowModule(LightningModule):
 
     def training_step(self, batch: Any, stage: int):
         step_start_time = time.time()
+        batch, _ = batch # only use structure batch during training
         self.interpolant.set_device(batch['res_mask'].device)
 
         # noise injection
@@ -275,7 +279,8 @@ class FlowModule(LightningModule):
 
         # Training throughput
         self._log_scalar(
-            "train/length", batch['res_mask'].shape[1], prog_bar=False, batch_size=num_batch)
+            "train/length", batch['res_mask'].shape[1], 
+            prog_bar=False, batch_size=num_batch)
         self._log_scalar(
             "train/batch_size", num_batch, prog_bar=False)
         step_time = time.time() - step_start_time
@@ -283,10 +288,15 @@ class FlowModule(LightningModule):
             "train/examples_per_second", num_batch / step_time)
         train_loss = (
             total_losses[self._exp_cfg.training.loss]
+            # NOTE: WARNING =======================================================
+            # TODO: this was already added in model_step (so we're adding it twice), 
+            #       but this is how it was in the original code)
+            #       deleting this line and setting aux_loss_weight: 2 in the config  
+            #       should be equivalent
             +  total_losses['auxiliary_loss']
+            # =====================================================================
         )
-        self._log_scalar(
-            "train/loss", train_loss, batch_size=num_batch)
+        self._log_scalar("train/loss", train_loss, batch_size=num_batch)
         return train_loss
 
     def configure_optimizers(self):
@@ -295,21 +305,26 @@ class FlowModule(LightningModule):
             **self._exp_cfg.optimizer
         )
 
+    # TODO: may want to modify so that supports multiple samples in parallel
+    #       -> would require changes to interpolant.sample() 
     def predict_step(self, batch, batch_idx):
-        # TODO: this is for inference, also do testing as test_step() [is pre-implemented]
         '''
-        Inference call, requires no input pdb, just a batch of 
-        desired num_res and a sample_id. 
-        See experiments/utils.py -> LengthDataset().
+        Inference call, requires no input pdbs (structure batch), 
+        just a length batch antibody parameters to generate with.
+        (See data/data_module.py -> LengthDataset()).
         '''
-        
         device = f'cuda:{torch.cuda.current_device()}'
         interpolant = Interpolant(self._infer_cfg.interpolant) 
         interpolant.set_device(device)
 
-        sample_length = batch['num_res'].item()
+        _, batch = batch # ignore any structure batch during inference
+
+        len_h, len_l = batch['len_h'], batch['len_l']
+        num_res, num_batch = len_h + len_l, len_h.shape[0]
+        sample_length = num_res.item()
         diffuse_mask = torch.ones(1, sample_length)
         sample_id = batch['sample_id'].item()
+
         sample_dir = os.path.join(
             self._output_dir, f'length_{sample_length}', f'sample_{sample_id}')
         top_sample_csv_path = os.path.join(sample_dir, 'top_sample.csv')
@@ -318,17 +333,19 @@ class FlowModule(LightningModule):
                 f'Skipping instance {sample_id} length {sample_length}')
             return
 
-        # TODO: modify to call with batch!=1 if specified -> more samples in parallel
-        atom37_traj, model_traj, _ = interpolant.sample(
-            1, sample_length, self.model
-        )
+        atom37_traj, model_traj, _, res_idx = interpolant.sample(batch, self.model)
 
         os.makedirs(sample_dir, exist_ok=True)
-        bb_traj = du.to_numpy(torch.concat(atom37_traj, dim=0))
+        bb_traj = du.to_numpy(torch.concat(atom37_traj, dim=0)) # also puts on cpu
         _ = eu.save_traj(
-            bb_traj[-1],
-            bb_traj,
+            bb_traj[-1],        # final state as atom coords
+            bb_traj,            # entire trajectory as atom coords
+            # trajectory of final-state projections as atom coords
             np.flip(du.to_numpy(torch.concat(model_traj, dim=0)), axis=0),
-            du.to_numpy(diffuse_mask)[0],
+            du.to_numpy(diffuse_mask)[0], # array of 1s (sample-length)
+            du.to_numpy(res_idx)[0],      # residue index (sample-length)
             output_dir=sample_dir,
         )
+
+# TODO: should define a test_step() as well
+# -> same logic as validation_step() but use the test config

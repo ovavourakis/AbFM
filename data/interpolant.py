@@ -284,5 +284,4 @@ class Interpolant:
         atom37_traj = all_atom.transrot_to_atom37(prot_traj, res_mask)
         clean_atom37_traj = all_atom.transrot_to_atom37(clean_traj, res_mask)
         
-        # NOTE: does not return residue indices?
-        return atom37_traj, clean_atom37_traj, clean_traj
+        return atom37_traj, clean_atom37_traj, clean_traj, res_idx

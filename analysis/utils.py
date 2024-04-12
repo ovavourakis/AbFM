@@ -11,6 +11,7 @@ Rigid = rigid_utils.Rigid
 def create_full_prot(
         atom37: np.ndarray,
         atom37_mask: np.ndarray,
+        res_idx=None,
         aatype=None,
         b_factors=None,
     ):
@@ -19,9 +20,13 @@ def create_full_prot(
     assert atom37.shape[-2] == 37
     n = atom37.shape[0]
 
-    # TODO: modify this for two-chain protein
-    residue_index = np.arange(n)
-    chain_index = np.zeros(n)
+    if res_idx is None:
+        residue_index = np.arange(n)
+        chain_index = np.zeros(n)
+    else:
+        residue_index = res_idx
+        chain_index = np.where(residue_index <= 1000, 0, 1)
+    
     if b_factors is None:
         b_factors = np.zeros([n, 37])
     if aatype is None:
@@ -38,6 +43,7 @@ def create_full_prot(
 def write_prot_to_pdb(
         prot_pos: np.ndarray,
         file_path: str,
+        res_idx: np.ndarray=None,
         aatype: np.ndarray=None,
         overwrite=False,
         no_indexing=False,
@@ -61,13 +67,13 @@ def write_prot_to_pdb(
             for t, pos37 in enumerate(prot_pos):
                 atom37_mask = np.sum(np.abs(pos37), axis=-1) > 1e-7
                 prot = create_full_prot(
-                    pos37, atom37_mask, aatype=aatype, b_factors=b_factors)
+                    pos37, atom37_mask, res_idx=res_idx, aatype=aatype, b_factors=b_factors)
                 pdb_prot = protein.to_pdb(prot, model=t + 1, add_end=False)
                 f.write(pdb_prot)
         elif prot_pos.ndim == 3:
             atom37_mask = np.sum(np.abs(prot_pos), axis=-1) > 1e-7
             prot = create_full_prot(
-                prot_pos, atom37_mask, aatype=aatype, b_factors=b_factors)
+                prot_pos, atom37_mask, res_idx=res_idx, aatype=aatype, b_factors=b_factors)
             pdb_prot = protein.to_pdb(prot, model=1, add_end=False)
             f.write(pdb_prot)
         else:
