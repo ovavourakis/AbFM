@@ -195,35 +195,36 @@ class Interpolant:
 
     # TODO: consider implementing a better integrator (not Euler) - could maybe use scipy.integrate.odeint?
     # TODO: may want to alter so can handle multiple samples of different length in batch - padding in res_mask (and elsewhere?)
-    # TODO: requires re-write for two-chain inference --------------------------------------------------------------
     def sample(self, batch, model):
-        # to be called on ab-parameter batches during inference only!
-        # each batch contains a single sample
+        """
+        This method is intended to be called on ab-parameter batches 
+        during inference only. Each batch contains a single sample.
+        """
         len_h, len_l = batch['len_h'], batch['len_l']
         num_res, num_batch = len_h + len_l, len_h.shape[0]
 
+        idx_h = torch.arange(len_h, device=self._device)
+        idx_l = torch.arange(len_l, device=self._device) + 1001
+        res_idx = torch.cat([idx_h, idx_l])
         res_mask = torch.ones(num_batch, num_res, device=self._device)
-
+        batch = {'res_idx': res_idx,    
+                 'res_mask': res_mask,
+        }
         # start with a sample from the prior distribution
+        # NOTE: during sampling we start from uniform on SO3
+        #       whereas training used IGSO3
+        rotmats_0 = _uniform_so3(num_batch, num_res, self._device)
         trans_0 = _centered_gaussian(
             num_batch, num_res, self._device) * du.NM_TO_ANG_SCALE
-        rotmats_0 = _uniform_so3(num_batch, num_res, self._device)      # NOTE: during sampling we start from uniform on SO3
-        batch = {                                                       #       training used initial samples from IGSO3
-            'res_mask': res_mask,
-        }
-
-        # Set-up time
+        # set up time grid for integration
         ts = torch.linspace(
             self._cfg.min_t, 1.0, self._sample_cfg.num_timesteps)
         t_1 = ts[0]
-
+        # propagate system forward in time
         prot_traj = [(trans_0, rotmats_0)]
         clean_traj = []
-
-        # TODO: add the precie sequence indices to the batch before this point
         for t_2 in ts[1:]:
-
-            # Run model.
+            # run model
             trans_t_1, rotmats_t_1 = prot_traj[-1]
             batch['trans_t'] = trans_t_1
             batch['rotmats_t'] = rotmats_t_1
@@ -231,8 +232,7 @@ class Interpolant:
             batch['t'] = t
             with torch.no_grad():
                 model_out = model(batch)
-
-            # Process model output.
+            # process model output
             pred_trans_1 = model_out['pred_trans']
             pred_rotmats_1 = model_out['pred_rotmats']
             clean_traj.append(
@@ -240,9 +240,8 @@ class Interpolant:
             )
             if self._cfg.self_condition:
                 batch['trans_sc'] = pred_trans_1
-
-            ''' NOTE: 
-            We re-parametrised the loss s.t. the model predicts x_{t=1} and r_{t=1}, 
+            ''' 
+            NOTE: We re-parametrised the loss s.t. the model predicts x_{t=1} and r_{t=1}, 
             rather than the vector fields v_x and v_r, going from eq. (4.5) to eq. (6) in FrameFlow paper.
             This means that during sampling, when we actually *need* the vector fields, because
             
@@ -257,7 +256,7 @@ class Interpolant:
             We could potentially even truncate the sampling after a few steps and use the final-t prediction,
             if it's good enough.
             '''
-             # Take reverse step
+            # take reverse step
             d_t = t_2 - t_1
             trans_t_2 = self._trans_euler_step(
                 d_t, t_1, pred_trans_1, trans_t_1)
@@ -284,4 +283,6 @@ class Interpolant:
         # Convert trajectories to atom37.
         atom37_traj = all_atom.transrot_to_atom37(prot_traj, res_mask)
         clean_atom37_traj = all_atom.transrot_to_atom37(clean_traj, res_mask)
+        
+        # NOTE: does not return residue indices?
         return atom37_traj, clean_atom37_traj, clean_traj

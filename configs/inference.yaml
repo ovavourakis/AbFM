@@ -25,9 +25,9 @@ data:
         length_list: null                   # explicit list of lengths at which to generate
         overwrite: False
     bsampler:
-      num_batches_per_epoch_per_gpu: 1      # set close to samples_per_length*num_lengths/num_gpus/max_batch_size
+      num_batches_per_epoch_per_gpu: 90     # set close to samples_per_length*num_lengths/num_gpus
       num_struc_samples: null
-      max_batch_size: 90
+      max_batch_size: 1                     # TODO: currently sample() only handles batches of size one
       max_num_res_squared: 500_000          # true_batch_size = min(max_batch_size, max_num_res_squared // seq_len^2 + 1)
 
 

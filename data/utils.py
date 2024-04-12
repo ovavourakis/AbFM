@@ -345,6 +345,7 @@ def align_structures(
     return batch_positions_rotated, reference_positions, rotation_matrices
 
 
+# TODO: this isn't being called anywhere - remove if not needed
 # def parse_pdb_feats(
 #         pdb_name: str,
 #         pdb_path: str,
