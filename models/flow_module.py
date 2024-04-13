@@ -327,18 +327,25 @@ class FlowModule(LightningModule):
         batch_losses = self.model_step(noisy_batch, stage=stage)
 
         return batch_losses, noisy_batch
+
+    def struc_step(self, struc_batch, stage='train'):
+        """Training-like step (loss computation on structures)."""
+
+        # noising, fwd pass, individual losses
+        batch_losses, noisy_batch = self.process_struc_batch(struc_batch, f'{stage}')
         
+        # loss logging and aggregation
+        num_batch = batch_losses['bb_atom_loss'].shape[0]
+        loss = self.loss_agg_and_log(batch_losses, noisy_batch, f'{stage}')
+
+        return loss, num_batch
+
 
     def training_step(self, batch: Any, stage: int):
         step_start_time = time.time()
         struc_batch, _ = batch # only use structure batch during training
-        
-        # noising, fwd pass, individual losses
-        batch_losses, noisy_batch = self.process_struc_batch(struc_batch, 'train')
-        
-        # loss logging and aggregation
-        num_batch = batch_losses['bb_atom_loss'].shape[0]
-        train_loss = self.loss_agg_and_log(batch_losses, noisy_batch, 'train')
+
+        train_loss, num_batch = self.struc_step(struc_batch, stage='train')
 
         step_time = time.time() - step_start_time
         self._log_scalar("train/examples_per_second", num_batch / step_time)
