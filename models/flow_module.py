@@ -54,16 +54,25 @@ class FlowModule(LightningModule):
         )
         self._epoch_start_time = time.time()
 
-    def model_step(self, noisy_batch: Any):
+    def model_step(self, noisy_batch: Any, stage: str = 'train'):
         # returns losses for a structure batch, as given in FrameDiff paper
         # see also eq. (6) in FrameFlow paper
         # every protein in a batch has the same length
+        assert stage in ['train', 'valid', 'test', 'sample'], f'Unknown stage {stage}.'
+
+        if stage == 'train':
+            cfg = self._exp_cfg.training
+        elif stage == 'valid':
+            cfg = self._exp_cfg.validation
+        elif stage == 'test':
+            cfg = self._exp_cfg.testing
+        elif stage == 'sample':
+            cfg = self._exp_cfg.sampling
         
-        training_cfg = self._exp_cfg.training
         loss_mask = noisy_batch['res_mask']
-        if training_cfg.min_plddt_mask is not None:
+        if cfg.min_plddt_mask is not None:
             if 'res_plddt' in noisy_batch:
-                plddt_mask = noisy_batch['res_plddt'] > training_cfg.min_plddt_mask
+                plddt_mask = noisy_batch['res_plddt'] > cfg.min_plddt_mask
                 loss_mask *= plddt_mask
             else:
                 self._print_logger.warning(
@@ -82,18 +91,22 @@ class FlowModule(LightningModule):
         # NOTE: could also / additionally use the t_rot (if it differs) -> see. Interpolant.corrupt_batch()
         t = noisy_batch['t']
         norm_scale = 1 - torch.min(
-            t[..., None], torch.tensor(training_cfg.t_normalize_clip))
+            t[..., None], torch.tensor(cfg.t_normalize_clip))
         
         # fwd pass
-        model_output = self.model(noisy_batch)
+        if stage == 'train':
+            model_output = self.model(noisy_batch)
+        else:
+            with torch.no_grad():
+                model_output = self.model(noisy_batch)
         pred_trans_1 = model_output['pred_trans']
         pred_rotmats_1 = model_output['pred_rotmats']
         pred_rots_vf = so3_utils.calc_rot_vf(rotmats_t, pred_rotmats_1)
 
         # Backbone atom loss
         pred_bb_atoms = all_atom.to_atom37(pred_trans_1, pred_rotmats_1)[:, :, :3]
-        gt_bb_atoms *= training_cfg.bb_atom_scale / norm_scale[..., None]
-        pred_bb_atoms *= training_cfg.bb_atom_scale / norm_scale[..., None]
+        gt_bb_atoms *= cfg.bb_atom_scale / norm_scale[..., None]
+        pred_bb_atoms *= cfg.bb_atom_scale / norm_scale[..., None]
         loss_denom = torch.sum(loss_mask, dim=-1) * 3 # 3 bb atoms per included residue
         bb_atom_loss = torch.sum(
             (gt_bb_atoms - pred_bb_atoms) ** 2 * loss_mask[..., None, None],
@@ -101,15 +114,15 @@ class FlowModule(LightningModule):
         ) / loss_denom
 
         # Translation VF loss
-        trans_error = (gt_trans_1 - pred_trans_1) / norm_scale * training_cfg.trans_scale
-        trans_loss = training_cfg.translation_loss_weight * torch.sum(
+        trans_error = (gt_trans_1 - pred_trans_1) / norm_scale * cfg.trans_scale
+        trans_loss = cfg.translation_loss_weight * torch.sum(
             trans_error ** 2 * loss_mask[..., None],
             dim=(-1, -2)
         ) / loss_denom
 
         # Rotation VF loss
         rots_vf_error = (gt_rot_vf - pred_rots_vf) / norm_scale
-        rots_vf_loss = training_cfg.rotation_loss_weights * torch.sum(
+        rots_vf_loss = cfg.rotation_loss_weights * torch.sum(
             rots_vf_error ** 2 * loss_mask[..., None],
             dim=(-1, -2)
         ) / loss_denom
@@ -138,7 +151,7 @@ class FlowModule(LightningModule):
 
         se3_vf_loss = trans_loss + rots_vf_loss
         auxiliary_loss = (bb_atom_loss + dist_mat_loss) * (
-            t[:, 0] > training_cfg.aux_loss_t_pass
+            t[:, 0] > cfg.aux_loss_t_pass
         )
         auxiliary_loss *= self._exp_cfg.training.aux_loss_weight
 
@@ -156,8 +169,9 @@ class FlowModule(LightningModule):
         }
 
     def validation_step(self, batch: Any, batch_idx: int):
-         # TODO: change this to use the new Length dataset
-
+        # TODO: continue from here ---------------------------------------------
+        # TODO: change this to use the new Length dataset
+        # maybe just call the training step and set no_grad
 
         res_mask = batch['res_mask']
         self.interpolant.set_device(res_mask.device)
@@ -238,22 +252,8 @@ class FlowModule(LightningModule):
             rank_zero_only=rank_zero_only
         )
 
-    def training_step(self, batch: Any, stage: int):
-        step_start_time = time.time()
-        batch, _ = batch # only use structure batch during training
-        self.interpolant.set_device(batch['res_mask'].device)
-
-        # noise injection
-        noisy_batch = self.interpolant.corrupt_batch(batch)
-
-        # generate edge-rep self-conditioning distogram w/ 50% prob, if specified
-        if self._interpolant_cfg.self_condition and random.random() > 0.5:
-            with torch.no_grad():
-                model_sc = self.model(noisy_batch)
-                noisy_batch['trans_sc'] = model_sc['pred_trans']
-        
-        # forward pass and per-item losses
-        batch_losses = self.model_step(noisy_batch)
+    def loss_agg_and_log(self, batch_losses, noisy_batch, stage):
+        assert stage in ['train', 'valid', 'test', 'sample'], f'Unknown stage {stage}.'
 
         # mean loss across loss types per item in batch
         num_batch = batch_losses['bb_atom_loss'].shape[0]
@@ -262,12 +262,12 @@ class FlowModule(LightningModule):
         }
         for k,v in total_losses.items():
             self._log_scalar(
-                f"train/{k}", v, prog_bar=False, batch_size=num_batch)
+                f"{stage}/{k}", v, prog_bar=False, batch_size=num_batch)
         
         # mean loss across time-bin; per loss type
         t = torch.squeeze(noisy_batch['t'])
         self._log_scalar(
-            "train/t",
+            f"{stage}/t",
             np.mean(du.to_numpy(t)), # mean sampled t across batch
             prog_bar=False, batch_size=num_batch)
         for loss_name, loss_dict in batch_losses.items():
@@ -275,19 +275,27 @@ class FlowModule(LightningModule):
                 t, loss_dict, loss_name=loss_name)
             for k,v in stratified_losses.items():
                 self._log_scalar(
-                    f"train/{k}", v, prog_bar=False, batch_size=num_batch)
-
-        # Training throughput
+                    f"{stage}/{k}", v, prog_bar=False, batch_size=num_batch)
+                
+        # throughput
         self._log_scalar(
-            "train/length", batch['res_mask'].shape[1], 
+            f"{stage}/length", noisy_batch['res_mask'].shape[1], 
             prog_bar=False, batch_size=num_batch)
         self._log_scalar(
-            "train/batch_size", num_batch, prog_bar=False)
-        step_time = time.time() - step_start_time
-        self._log_scalar(
-            "train/examples_per_second", num_batch / step_time)
-        train_loss = (
-            total_losses[self._exp_cfg.training.loss]
+            f"{stage}/batch_size", num_batch, prog_bar=False)
+        
+        # total loss
+        if stage == 'train':
+            specified_loss = self._exp_cfg.training.loss
+        elif stage == 'valid':
+            specified_loss = self._exp_cfg.validation.loss
+        elif stage == 'test':
+            specified_loss = self._exp_cfg.testing.loss
+        elif stage == 'sample':
+            specified_loss = self._exp_cfg.sampling.loss
+
+        loss = (
+            total_losses[specified_loss]
             # NOTE: WARNING =======================================================
             # TODO: this was already added in model_step (so we're adding it twice), 
             #       but this is how it was in the original code)
@@ -296,7 +304,45 @@ class FlowModule(LightningModule):
             +  total_losses['auxiliary_loss']
             # =====================================================================
         )
-        self._log_scalar("train/loss", train_loss, batch_size=num_batch)
+        self._log_scalar(f"{stage}/loss", loss, batch_size=num_batch)
+
+        return loss
+    
+    def process_struc_batch(self, struc_batch, stage):
+        assert stage in ['train', 'valid', 'test', 'sample'], f'Unknown stage {stage}.'
+        self.interpolant.set_device(struc_batch['res_mask'].device)
+
+        # noise injection
+        noisy_batch = self.interpolant.corrupt_batch(struc_batch)
+
+        # generate edge-rep self-conditioning distogram w/ 50% prob, if specified
+        # always use it during validation, testing, and sampling (if specified)
+        if self._interpolant_cfg.self_condition:
+            if stage in ['valid', 'test', 'sample'] or random.random() > 0.5:
+                with torch.no_grad():
+                    model_sc = self.model(noisy_batch)
+                    noisy_batch['trans_sc'] = model_sc['pred_trans']
+        
+        # forward pass and per-item losses
+        batch_losses = self.model_step(noisy_batch, stage=stage)
+
+        return batch_losses, noisy_batch
+        
+
+    def training_step(self, batch: Any, stage: int):
+        step_start_time = time.time()
+        struc_batch, _ = batch # only use structure batch during training
+        
+        # noising, fwd pass, individual losses
+        batch_losses, noisy_batch = self.process_struc_batch(struc_batch, 'train')
+        
+        # loss logging and aggregation
+        num_batch = batch_losses['bb_atom_loss'].shape[0]
+        train_loss = self.loss_agg_and_log(batch_losses, noisy_batch, 'train')
+
+        step_time = time.time() - step_start_time
+        self._log_scalar("train/examples_per_second", num_batch / step_time)
+
         return train_loss
 
     def configure_optimizers(self):
