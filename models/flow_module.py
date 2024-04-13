@@ -40,19 +40,36 @@ class FlowModule(LightningModule):
         self.validation_epoch_metrics = []
         self.validation_epoch_samples = []
         self.save_hyperparameters() # saves to self.hparams (also in model checkpoints)
-        
-    def on_train_start(self):
-        self._epoch_start_time = time.time()
-        
-    def on_train_epoch_end(self):
-        epoch_time = (time.time() - self._epoch_start_time) / 60.0
-        self.log('train/epoch_time_minutes', 
-                 epoch_time,
-                 on_step=False,
-                 on_epoch=True,
-                 prog_bar=False
+    
+    def configure_optimizers(self):
+        return torch.optim.AdamW(
+            params=self.model.parameters(),
+            **self._exp_cfg.optimizer
         )
-        self._epoch_start_time = time.time()
+    
+    def _log_scalar(
+            self,
+            key,
+            value,
+            on_step=True,
+            on_epoch=False,
+            prog_bar=True,
+            batch_size=None,
+            sync_dist=False,
+            rank_zero_only=True
+        ):
+        if sync_dist and rank_zero_only:
+            raise ValueError('Unable to sync dist when rank_zero_only=True')
+        self.log(
+            key,
+            value,
+            on_step=on_step,
+            on_epoch=on_epoch,
+            prog_bar=prog_bar,
+            batch_size=batch_size,
+            sync_dist=sync_dist,
+            rank_zero_only=rank_zero_only
+        )
 
     def model_step(self, noisy_batch: Any, stage: str = 'train'):
         # returns losses for a structure batch, as given in FrameDiff paper
@@ -168,90 +185,26 @@ class FlowModule(LightningModule):
             "tot_loss": tot_loss
         }
 
-    def validation_step(self, batch: Any, batch_idx: int):
-        # TODO: continue from here ---------------------------------------------
-        # TODO: change this to use the new Length dataset
-        # maybe just call the training step and set no_grad
+    def process_struc_batch(self, struc_batch, stage):
+        assert stage in ['train', 'valid', 'test', 'sample'], f'Unknown stage {stage}.'
+        self.interpolant.set_device(struc_batch['res_mask'].device)
 
-        res_mask = batch['res_mask']
-        self.interpolant.set_device(res_mask.device)
-        num_batch, num_res = res_mask.shape
+        # noise injection
+        noisy_batch = self.interpolant.corrupt_batch(struc_batch)
+
+        # generate edge-rep self-conditioning distogram w/ 50% prob, if specified
+        # always use it during validation, testing, and sampling (if specified)
+        if self._interpolant_cfg.self_condition:
+            if stage in ['valid', 'test', 'sample'] or random.random() > 0.5:
+                with torch.no_grad():
+                    model_sc = self.model(noisy_batch)
+                    noisy_batch['trans_sc'] = model_sc['pred_trans']
         
-       
-        samples = self.interpolant.sample(
-            num_batch,
-            num_res,
-            self.model,
-        )[0][-1].numpy()
+        # forward pass and per-item losses
+        batch_losses = self.model_step(noisy_batch, stage=stage)
 
-        batch_metrics = []
-        for i in range(num_batch):
-
-            # Write out sample to PDB file
-            final_pos = samples[i]
-            saved_path = au.write_prot_to_pdb(
-                final_pos,
-                os.path.join(
-                    self._sample_write_dir,
-                    f'sample_{i}_idx_{batch_idx}_len_{num_res}.pdb'),
-                no_indexing=True
-            )
-            if isinstance(self.logger, WandbLogger):
-                self.validation_epoch_samples.append(
-                    [saved_path, self.global_step, wandb.Molecule(saved_path)]
-                )
-
-            mdtraj_metrics = metrics.calc_mdtraj_metrics(saved_path)
-            ca_idx = residue_constants.atom_order['CA']
-            ca_ca_metrics = metrics.calc_ca_ca_metrics(final_pos[:, ca_idx])
-            batch_metrics.append((mdtraj_metrics | ca_ca_metrics)) # dictionary merge
-
-        batch_metrics = pd.DataFrame(batch_metrics)
-        self.validation_epoch_metrics.append(batch_metrics)
-        
-    def on_validation_epoch_end(self):
-        if len(self.validation_epoch_samples) > 0:
-            self.logger.log_table(
-                key='valid/samples',
-                columns=["sample_path", "global_step", "Protein"],
-                data=self.validation_epoch_samples)
-            self.validation_epoch_samples.clear()
-        val_epoch_metrics = pd.concat(self.validation_epoch_metrics)
-        for metric_name,metric_val in val_epoch_metrics.mean().to_dict().items():
-            self._log_scalar(
-                f'valid/{metric_name}',
-                metric_val,
-                on_step=False,
-                on_epoch=True,
-                prog_bar=False,
-                batch_size=len(val_epoch_metrics),
-            )
-        self.validation_epoch_metrics.clear()
-
-    def _log_scalar(
-            self,
-            key,
-            value,
-            on_step=True,
-            on_epoch=False,
-            prog_bar=True,
-            batch_size=None,
-            sync_dist=False,
-            rank_zero_only=True
-        ):
-        if sync_dist and rank_zero_only:
-            raise ValueError('Unable to sync dist when rank_zero_only=True')
-        self.log(
-            key,
-            value,
-            on_step=on_step,
-            on_epoch=on_epoch,
-            prog_bar=prog_bar,
-            batch_size=batch_size,
-            sync_dist=sync_dist,
-            rank_zero_only=rank_zero_only
-        )
-
+        return batch_losses, noisy_batch
+    
     def loss_agg_and_log(self, batch_losses, noisy_batch, stage):
         assert stage in ['train', 'valid', 'test', 'sample'], f'Unknown stage {stage}.'
 
@@ -308,26 +261,6 @@ class FlowModule(LightningModule):
 
         return loss
     
-    def process_struc_batch(self, struc_batch, stage):
-        assert stage in ['train', 'valid', 'test', 'sample'], f'Unknown stage {stage}.'
-        self.interpolant.set_device(struc_batch['res_mask'].device)
-
-        # noise injection
-        noisy_batch = self.interpolant.corrupt_batch(struc_batch)
-
-        # generate edge-rep self-conditioning distogram w/ 50% prob, if specified
-        # always use it during validation, testing, and sampling (if specified)
-        if self._interpolant_cfg.self_condition:
-            if stage in ['valid', 'test', 'sample'] or random.random() > 0.5:
-                with torch.no_grad():
-                    model_sc = self.model(noisy_batch)
-                    noisy_batch['trans_sc'] = model_sc['pred_trans']
-        
-        # forward pass and per-item losses
-        batch_losses = self.model_step(noisy_batch, stage=stage)
-
-        return batch_losses, noisy_batch
-
     def struc_step(self, struc_batch, stage='train'):
         """Training-like step (loss computation on structures)."""
 
@@ -340,7 +273,6 @@ class FlowModule(LightningModule):
 
         return loss, num_batch
 
-
     def training_step(self, batch: Any, stage: int):
         step_start_time = time.time()
         struc_batch, _ = batch # only use structure batch during training
@@ -351,33 +283,153 @@ class FlowModule(LightningModule):
         self._log_scalar("train/examples_per_second", num_batch / step_time)
 
         return train_loss
-
-    def configure_optimizers(self):
-        return torch.optim.AdamW(
-            params=self.model.parameters(),
-            **self._exp_cfg.optimizer
+        
+    def on_train_start(self):
+        self._epoch_start_time = time.time()
+        
+    def on_train_epoch_end(self):
+        epoch_time = (time.time() - self._epoch_start_time) / 60.0
+        self.log('train/epoch_time_minutes', 
+                 epoch_time,
+                 on_step=False,
+                 on_epoch=True,
+                 prog_bar=False
         )
+        self._epoch_start_time = time.time()
+
+    def sample_step(self, len_batch):
+        """Inference-like step (generation of new structures)."""
+
+        self.interpolant.set_device(f'cuda:{torch.cuda.current_device()}')
+        return self.interpolant.sample(len_batch, self.model)
+
+    def struc_and_sample_step(self, batch: Any, batch_idx: int, stage='valid'):
+        """
+        Performs a training-like loss computation followed by sample generation
+        on a joint batch of known structures and antibody parameters to generate with.
+        Logs everything appropriately.
+        """
+        struc_batch, len_batch = batch
+        len_struc_batch, len_len_batch = 0, 0
+        loss = None
+
+        # training-like loss computation
+        if struc_batch is not None:
+            loss, len_struc_batch = self.struc_step(struc_batch, stage=stage)
+
+        # generation-based evaluation
+        if len_batch is not None:
+            samples, projections_traj, _, res_idx = self.sample_step(len_batch)
+
+            samples = samples[-1].numpy()       # just final state
+            len_len_batch = samples.shape[0]                                                # TODO: check this
+            res_idx = du.to_numpy(res_idx)[0]                                               # TODO: check this
+
+                                                                                            # TODO: disambiguate directory
+            if stage == 'valid':
+                writedir = self._sample_write_dir
+                samples_list = self.validation_epoch_samples
+                metrics_list = self.validation_epoch_metrics
+            elif stage == 'test':
+                writedir = self._sample_write_dir
+                samples_list = self.test_epoch_samples                                      # TODO: create in constructor
+                metrics_list = self.test_epoch_metrics                                      # TODO: ditto
+
+            batch_metrics = []
+            for i in range(len_len_batch):
+
+                # write out sample to PDB file
+                final_pos = samples[i]
+                saved_path = au.write_prot_to_pdb(
+                                final_pos,
+                                os.path.join(writedir,
+                                    f'sample_{i}_idx_{batch_idx}_len_{len(res_idx)}.pdb'),
+                                res_idx=res_idx,
+                                no_indexing=True # no file indexing
+                )
+                if isinstance(self.logger, WandbLogger):
+                    samples_list.append(
+                        [saved_path, self.global_step, wandb.Molecule(saved_path)]
+                    )
+
+                # calculate evaluation metrics on batch
+                mdtraj_metrics = metrics.calc_mdtraj_metrics(saved_path)
+                ca_idx = residue_constants.atom_order['CA']
+                ca_ca_metrics = metrics.calc_ca_ca_metrics(final_pos[:, ca_idx])
+                batch_metrics.append((mdtraj_metrics | ca_ca_metrics)) # dictionary merge
+
+            metrics_list.append(pd.DataFrame(batch_metrics))
+
+        return loss, len_struc_batch + len_len_batch
+        
+    def validation_step(self, batch: Any, batch_idx: int):
+        step_start_time = time.time()
+        
+        val_loss, len_batch = self.struc_and_sample_step(batch, batch_idx, stage='valid')
+
+        step_time = time.time() - step_start_time
+        self._log_scalar("valid/examples_per_second", len_batch / step_time)
+
+        return val_loss
+
+    def test_step(self, batch: Any, batch_idx: int):
+        step_start_time = time.time()
+
+        test_loss, len_batch = self.struc_and_sample_step(batch, batch_idx, stage='test')
+
+        step_time = time.time() - step_start_time
+        self._log_scalar("test/examples_per_second", len_batch / step_time)
+
+        return test_loss
+
+    def end_val_test_epoch(self, stage='valid'):
+        if stage == 'valid':
+            samples_list = self.validation_epoch_samples                        # TODO: make sure these all exist
+            metrics_list = self.validation_epoch_metrics
+        elif stage == 'test':
+            samples_list = self.test_epoch_samples
+            metrics_list = self.test_epoch_metrics
+
+        if len(samples_list) > 0:
+            self.logger.log_table(
+                key=f'{stage}/samples',
+                columns=["sample_path", "global_step", "Protein"],
+                data=samples_list)
+            samples_list.clear()
+
+        epoch_metrics = pd.concat(metrics_list)
+        for metric_name, metric_val in epoch_metrics.mean().to_dict().items():
+            self._log_scalar(
+                f'{stage}/{metric_name}',
+                metric_val,
+                on_step=False,
+                on_epoch=True,
+                prog_bar=False,
+                batch_size=len(epoch_metrics),
+            )
+        metrics_list.clear()
+
+    def on_validation_epoch_end(self):
+        self.end_val_test_epoch(stage='valid')
+    
+    def on_test_epoch_end(self):
+        self.end_val_test_epoch(stage='test')
 
     # TODO: may want to modify so that supports multiple samples in parallel
     #       -> would require changes to interpolant.sample() 
-    def predict_step(self, batch, batch_idx):
-        '''
-        Inference call, requires no input pdbs (structure batch), 
-        just a length batch antibody parameters to generate with.
-        (See data/data_module.py -> LengthDataset()).
-        '''
-        device = f'cuda:{torch.cuda.current_device()}'
-        interpolant = Interpolant(self._infer_cfg.interpolant) 
-        interpolant.set_device(device)
-
-        _, batch = batch # ignore any structure batch during inference
-
-        len_h, len_l = batch['len_h'], batch['len_l']
-        num_res, num_batch = len_h + len_l, len_h.shape[0]
+    def predict_step(self, batch):
+        _, len_batch = batch # ignore any structure batch during inference
+        
+        # read off some constants
+        len_h, len_l = len_batch['len_h'], len_batch['len_l']
+        num_res = len_h + len_l
         sample_length = num_res.item()
         diffuse_mask = torch.ones(1, sample_length)
-        sample_id = batch['sample_id'].item()
+        sample_id = len_batch['sample_id'].item()
 
+        # TODO: define output_dir in constructor or read from sampling config
+        
+        # set up output directory path
         sample_dir = os.path.join(
             self._output_dir, f'length_{sample_length}', f'sample_{sample_id}')
         top_sample_csv_path = os.path.join(sample_dir, 'top_sample.csv')
@@ -385,9 +437,11 @@ class FlowModule(LightningModule):
             self._print_logger.info(
                 f'Skipping instance {sample_id} length {sample_length}')
             return
+        
+        # sample
+        atom37_traj, model_traj, _, res_idx = self.sample_step(len_batch)
 
-        atom37_traj, model_traj, _, res_idx = interpolant.sample(batch, self.model)
-
+        # write results to file
         os.makedirs(sample_dir, exist_ok=True)
         bb_traj = du.to_numpy(torch.concat(atom37_traj, dim=0)) # also puts on cpu
         _ = eu.save_traj(
@@ -400,5 +454,4 @@ class FlowModule(LightningModule):
             output_dir=sample_dir,
         )
 
-# TODO: should define a test_step() as well
-# -> same logic as validation_step() but use the test config
+        return
