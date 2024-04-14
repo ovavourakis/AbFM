@@ -37,14 +37,12 @@ class EdgeEmbedder(nn.Module):
             torch.tile(feats_1d[:, None, :, :], (1, num_res, 1, 1)),
         ], dim=-1).float().reshape([num_batch, num_res, num_res, -1])
 
-    def forward(self, s, t, sc_t, p_mask):
+    def forward(self, s, t, sc_t, p_mask, p_idx):
         num_batch, num_res, _ = s.shape
         p_i = self.linear_s_p(s)
         cross_node_feats = self._cross_concat(p_i, num_batch, num_res)
-        # TODO: change for dual-chain proteins - pass in batch instead!
-        # TODO: check if similar construct anywhere else
-        pos = torch.arange(
-            num_res, device=s.device).unsqueeze(0).repeat(num_batch, 1)
+
+        pos = p_idx.to(s.device).unsqueeze(0).repeat(num_batch, 1)
         relpos_feats = self.embed_relpos(pos)
 
         dist_feats = calc_distogram(

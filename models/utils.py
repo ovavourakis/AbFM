@@ -19,7 +19,7 @@ def calc_distogram(pos, min_bin, max_bin, num_bins):
 
 
 def get_index_embedding(indices, embed_size, max_len=2056):
-    """Creates sine / cosine positional embeddings from a prespecified indices.
+    """Creates sine / cosine positional embeddings from prespecified indices.
 
     Args:
         indices: offsets of size [..., N_edges] of type integer

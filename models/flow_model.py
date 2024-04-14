@@ -54,18 +54,19 @@ class FlowModel(nn.Module):
     def forward(self, input_feats):
         node_mask = input_feats['res_mask']
         edge_mask = node_mask[:, None] * node_mask[:, :, None]
+        node_idx = input_feats['res_idx']
         continuous_t = input_feats['t']
         trans_t = input_feats['trans_t']
         rotmats_t = input_feats['rotmats_t']
-
+        
         # Initialize node and edge embeddings
-        init_node_embed = self.node_embedder(continuous_t, node_mask)
+        init_node_embed = self.node_embedder(continuous_t, node_mask, node_idx)
         if 'trans_sc' not in input_feats:
             trans_sc = torch.zeros_like(trans_t)
         else:
             trans_sc = input_feats['trans_sc']
         init_edge_embed = self.edge_embedder(
-            init_node_embed, trans_t, trans_sc, edge_mask)
+            init_node_embed, trans_t, trans_sc, edge_mask, node_idx)
 
         # Initial rigids
         curr_rigids = du.create_rigid(rotmats_t, trans_t,) # create {T} in FrameFlow paper's notation

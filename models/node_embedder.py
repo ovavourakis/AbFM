@@ -23,17 +23,13 @@ class NodeEmbedder(nn.Module):
         )[:, None, :].repeat(1, mask.shape[1], 1)
         return timestep_emb * mask.unsqueeze(-1)
 
-    def forward(self, timesteps, mask):
-        # s: [b]
-
+    def forward(self, timesteps, mask, pos):
         b, num_res, device = mask.shape[0], mask.shape[1], mask.device
 
         # [b, n_res, c_pos_emb]
-        # TODO: pass in batch instead to allow for sequence-gap in two-chain proteins
-        pos = torch.arange(num_res, dtype=torch.float32).to(device)[None]
-        pos_emb = get_index_embedding(
-            pos, self.c_pos_emb, max_len=2056
-        )
+        pos = pos.to(dtype=torch.float32).to(device)[None]
+
+        pos_emb = get_index_embedding(pos, self.c_pos_emb, max_len=2056)
         pos_emb = pos_emb.repeat([b, 1, 1])
         pos_emb = pos_emb * mask.unsqueeze(-1)
 
