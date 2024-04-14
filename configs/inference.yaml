@@ -31,7 +31,7 @@ data:
       max_num_res_squared: 500_000          # true_batch_size = min(max_batch_size, max_num_res_squared // seq_len^2 + 1)
 
 
-
+# probably subsume this uder experiment
 inference:
   # Use this to write with date-time stamp.
   name: run_${now:%Y-%m-%d}_${now:%H-%M}

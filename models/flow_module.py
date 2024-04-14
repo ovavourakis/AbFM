@@ -26,19 +26,21 @@ class FlowModule(LightningModule):
     def __init__(self, cfg):
         super().__init__()
         self._print_logger = logging.getLogger(__name__)
-        self._exp_cfg = cfg.experiment
-        self._model_cfg = cfg.model
-        self._data_cfg = cfg.data
+
+        self.model = FlowModel(cfg.model)                   # CNF model proper
+        self.interpolant = Interpolant(cfg.interpolant)     # handles noising and ODE
+
         self._interpolant_cfg = cfg.interpolant
+        self._exp_cfg = cfg.experiment
 
-        self.model = FlowModel(cfg.model) # vector field prediction model
-        self.interpolant = Interpolant(cfg.interpolant) # handles noising and ODE
+        self._valid_sample_write_dir = self._exp_cfg.checkpointer.valid_dirpath
+        self._test_sample_write_dir = self._exp_cfg.checkpointer.test_dirpath
+        self._output_dir = self._exp_cfg.inference.output_dir
+        os.makedirs(self._valid_sample_write_dir, exist_ok=True)
+        os.makedirs(self._test_sample_write_dir, exist_ok=True)
 
-        self._sample_write_dir = self._exp_cfg.checkpointer.dirpath
-        os.makedirs(self._sample_write_dir, exist_ok=True)
-
-        self.validation_epoch_metrics = []
-        self.validation_epoch_samples = []
+        self.validation_epoch_metrics, self.validation_epoch_samples = [], []
+        self.test_epoch_metrics, self.test_epoch_samples = [], []
         self.save_hyperparameters() # saves to self.hparams (also in model checkpoints)
     
     def configure_optimizers(self):
@@ -206,7 +208,7 @@ class FlowModule(LightningModule):
         return batch_losses, noisy_batch
     
     def loss_agg_and_log(self, batch_losses, noisy_batch, stage):
-        assert stage in ['train', 'valid', 'test', 'sample'], f'Unknown stage {stage}.'
+        assert stage in ['train', 'valid', 'test'], f'Invalid stage {stage}.'
 
         # mean loss across loss types per item in batch
         num_batch = batch_losses['bb_atom_loss'].shape[0]
@@ -244,8 +246,6 @@ class FlowModule(LightningModule):
             specified_loss = self._exp_cfg.validation.loss
         elif stage == 'test':
             specified_loss = self._exp_cfg.testing.loss
-        elif stage == 'sample':
-            specified_loss = self._exp_cfg.sampling.loss
 
         loss = (
             total_losses[specified_loss]
@@ -325,15 +325,14 @@ class FlowModule(LightningModule):
             len_len_batch = samples.shape[0]                                                # TODO: check this
             res_idx = du.to_numpy(res_idx)[0]                                               # TODO: check this
 
-                                                                                            # TODO: disambiguate directory
             if stage == 'valid':
-                writedir = self._sample_write_dir
+                writedir = self._valid_sample_write_dir
                 samples_list = self.validation_epoch_samples
                 metrics_list = self.validation_epoch_metrics
             elif stage == 'test':
-                writedir = self._sample_write_dir
-                samples_list = self.test_epoch_samples                                      # TODO: create in constructor
-                metrics_list = self.test_epoch_metrics                                      # TODO: ditto
+                writedir = self._test_sample_write_dir
+                samples_list = self.test_epoch_samples
+                metrics_list = self.test_epoch_metrics
 
             batch_metrics = []
             for i in range(len_len_batch):
@@ -384,7 +383,7 @@ class FlowModule(LightningModule):
 
     def end_val_test_epoch(self, stage='valid'):
         if stage == 'valid':
-            samples_list = self.validation_epoch_samples                        # TODO: make sure these all exist
+            samples_list = self.validation_epoch_samples
             metrics_list = self.validation_epoch_metrics
         elif stage == 'test':
             samples_list = self.test_epoch_samples
@@ -426,8 +425,6 @@ class FlowModule(LightningModule):
         sample_length = num_res.item()
         diffuse_mask = torch.ones(1, sample_length)
         sample_id = len_batch['sample_id'].item()
-
-        # TODO: define output_dir in constructor or read from sampling config
         
         # set up output directory path
         sample_dir = os.path.join(
