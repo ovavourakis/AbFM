@@ -11,7 +11,7 @@ from pytorch_lightning.loggers.wandb import WandbLogger
 from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 
-from data.pdb_dataloader import PdbDataModule
+from data.data_module import DataModule
 from models.flow_module import FlowModule
 from experiments import utils as eu
 import wandb
@@ -26,7 +26,7 @@ class Experiment:
         self._cfg = cfg
         self._data_cfg = cfg.data
         self._exp_cfg = cfg.experiment
-        self._datamodule: LightningDataModule = PdbDataModule(self._data_cfg)
+        self._datamodule: LightningDataModule = DataModule(self._data_cfg)
         self._model: LightningModule = FlowModule(self._cfg)
         
     def train(self):
@@ -35,22 +35,20 @@ class Experiment:
             log.info("Debug mode.")
             logger = None
             self._exp_cfg.num_devices = 1
-            self._data_cfg.loader.num_workers = 0
+            self._data_cfg.module.loaders.num_workers = 0
         else:
-            logger = WandbLogger(
-                **self._exp_cfg.wandb,
-            )
+            logger = WandbLogger(**self._exp_cfg.wandb)
             
             # Checkpoint directory.
             ckpt_dir = self._exp_cfg.checkpointer.dirpath
             os.makedirs(ckpt_dir, exist_ok=True)
-            log.info(f"Checkpoints saved to {ckpt_dir}")
+            log.info(f"Checkpoints and test samples will be saved to {ckpt_dir}.")
             
             # Model checkpoints
             callbacks.append(ModelCheckpoint(**self._exp_cfg.checkpointer))
             
             # Save config
-            cfg_path = os.path.join(ckpt_dir, 'config.yaml')
+            cfg_path = os.path.join(ckpt_dir, 'trvalte_config.yaml')
             with open(cfg_path, 'w') as f:
                 OmegaConf.save(config=self._cfg, f=f.name)
             cfg_dict = OmegaConf.to_container(self._cfg, resolve=True)
@@ -64,7 +62,7 @@ class Experiment:
             **self._exp_cfg.trainer,
             callbacks=callbacks,
             logger=logger,
-            use_distributed_sampler=False, # parallelism handled by LengthBatcher internally
+            use_distributed_sampler=False, # parallelism handled by CombinedDatasetBatchSampler internally
             enable_progress_bar=True,
             enable_model_summary=True,
             devices=devices,
@@ -82,7 +80,7 @@ def main(cfg: DictConfig):
     if cfg.experiment.warm_start is not None and cfg.experiment.warm_start_cfg_override:
         # Loads warm start config.
         warm_start_cfg_path = os.path.join(
-            os.path.dirname(cfg.experiment.warm_start), 'config.yaml')
+            os.path.dirname(cfg.experiment.warm_start), 'trvalte_config.yaml')
         warm_start_cfg = OmegaConf.load(warm_start_cfg_path)
 
         # Warm start config may not have latest fields in the base config.

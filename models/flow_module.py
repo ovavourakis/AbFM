@@ -33,7 +33,7 @@ class FlowModule(LightningModule):
         self._interpolant_cfg = cfg.interpolant
         self._exp_cfg = cfg.experiment
 
-        self._valid_sample_write_dir = self._exp_cfg.checkpointer.valid_dirpath
+        self._valid_sample_write_dir = self._exp_cfg.checkpointer.dirpath
         self._test_sample_write_dir = self._exp_cfg.checkpointer.test_dirpath
         self._output_dir = self._exp_cfg.inference.output_dir
         os.makedirs(self._valid_sample_write_dir, exist_ok=True)
