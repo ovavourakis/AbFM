@@ -18,7 +18,7 @@ data:
         max_num_res_squared: 500_000        # true_batch_size = min(max_batch_size, max_num_res_squared // seq_len^2 + 1)   
     valid:
       use_pdbs: True                        # run validation on known structures
-      generate: False                       # also validate some de-novo generations
+      generate: False                       # also validate some de-novo generations (currently undefined how to do that)
       samples:
         seed: 123                           # determines random length combos chosen for tot_length
         min_length: ${data.dataset.pdbs.min_num_res}
@@ -38,7 +38,7 @@ data:
         max_num_res_squared: 500_000        # true_batch_size = min(max_batch_size, max_num_res_squared // seq_len^2 + 1)   
     test:
       use_pdbs: True                        # run test on known structures
-      generate: False                       # also generate some de-novo structures and run tests on them
+      generate: False                       # also generate some de-novo structures and run tests on them (currently undefined how to do that)
       samples:
         seed: 123                           # determines random length combos chosen for tot_length
         min_length: ${data.dataset.pdbs.min_num_res}
