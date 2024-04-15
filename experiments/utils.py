@@ -5,6 +5,7 @@ import os
 import numpy as np
 from analysis import utils as au
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
+from omegaconf import DictConfig, OmegaConf
 
 def save_traj(
         sample: np.ndarray,         # final state as atom coords
@@ -76,7 +77,6 @@ def save_traj(
         'x1_traj_path': x1_traj_path,
     }
 
-
 def get_pylogger(name=__name__) -> logging.Logger:
     """Initializes multi-GPU-friendly python command line logger."""
 
@@ -89,7 +89,6 @@ def get_pylogger(name=__name__) -> logging.Logger:
         setattr(logger, level, rank_zero_only(getattr(logger, level)))
 
     return logger
-
 
 def flatten_dict(raw_dict):
     """
@@ -106,3 +105,27 @@ def flatten_dict(raw_dict):
         else:
             flattened.append((k, v))
     return flattened
+
+def merge_configs(cfg: DictConfig, ckpt_new: DictConfig) -> DictConfig:
+    
+    OmegaConf.set_struct(cfg, False)
+    OmegaConf.set_struct(ckpt_new, False)
+    cfg = OmegaConf.merge(cfg, ckpt_new)
+    OmegaConf.set_struct(cfg, True)
+    
+    return cfg
+
+def load_warmstart_config(cfg: DictConfig) -> DictConfig:
+    
+    if cfg.experiment.warm_start is not None and cfg.experiment.warm_start_cfg_override:
+        # load warm-start config
+        warm_start_cfg_path = os.path.join(
+            os.path.dirname(cfg.experiment.warm_start), 'trvalte_config.yaml')
+        warm_start_cfg = OmegaConf.load(warm_start_cfg_path)
+
+        # over-write relevant fields with warm-start config
+        cfg = merge_configs(cfg, warm_start_cfg)
+        log.info(f'Loaded warm start config from {warm_start_cfg_path}')
+    
+    return cfg
+

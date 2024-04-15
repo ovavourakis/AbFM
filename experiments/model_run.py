@@ -1,11 +1,9 @@
 import os
+import wandb
 import GPUtil
-import torch
-
-import hydra
 from omegaconf import DictConfig, OmegaConf
 
-# Pytorch lightning imports
+import torch
 from pytorch_lightning import LightningDataModule, LightningModule, Trainer
 from pytorch_lightning.self.loggers.wandb import WandbLogger
 from pytorch_lightning.trainer import Trainer
@@ -14,20 +12,33 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from data.data_module import DataModule
 from models.flow_module import FlowModule
 from experiments import utils as eu
-import wandb
 
 log = eu.get_pyself.logger(__name__) # multi-GPU-friendly python CLI self.logger
 torch.set_float32_matmul_precision('high')
 
-
 class ModelRun:
 
-    def __init__(self, *, cfg: DictConfig):
+    def __init__(self, *, cfg: DictConfig, stage='train'):
         self._cfg = cfg
         self._data_cfg = cfg.data
         self._exp_cfg = cfg.experiment
+
+        # initialise data module
         self._datamodule: LightningDataModule = DataModule(self._data_cfg)
-        self._model: LightningModule = FlowModule(self._cfg)
+        # initialise model
+        if stage == 'train': 
+            self._model: LightningModule = FlowModule(self._cfg)
+        else:
+            if stage == 'test':
+                self.ckpt_dir = self._exp_cfg.checkpointer.dirpath
+            elif stage == 'sample':
+                self.ckpt_dir =self._exp_cfg.inference.ckpt_path
+            
+            self._model: LightningModule = FlowModule.load_from_checkpoint(
+                    checkpoint_path=self.ckpt_dir,
+                    cfg=self._cfg
+            )
+            self._model.eval()
 
     def setup_log_and_debug(self):
         if self._exp_cfg.debug:
@@ -78,16 +89,8 @@ class ModelRun:
 
     def test(self):
         self.setup_log_and_debug()
-
-        ckpt_path = self._exp_cfg.checkpointer.dirpath
-        self._model = FlowModule.load_from_checkpoint(
-            checkpoint_path=ckpt_path,
-            cfg=self._cfg
-        )
-        self._model.eval()
-
-        devices = GPUtil.getAvailable(order='memory', 
-                                      limit = 8)[:self._exp_cfg.num_devices]
+        devices = GPUtil.getAvailable(
+            order='memory', limit = 8)[:self._exp_cfg.num_devices]
         log.info(f"Using devices: {devices}")
         trainer = Trainer(
             **self._exp_cfg.trainer,
@@ -103,35 +106,27 @@ class ModelRun:
         )
     
     def sample(self):
-        pass
-        # TODO: continue from here ------------------------------------
+        self.setup_log_and_debug()
 
-    
-    
+        # set-up directories to write samples and config to
+        os.makedirs(self._exp_cfg.inference.output_dir, exist_ok=True)
+        config_path = os.path.join(self._output_dir, 'sample_config.yaml')
+        with open(config_path, 'w') as f:
+            OmegaConf.save(config=self._cfg, f=f)
+        log.info(f'Saved config and samples to {self._output_dir}')
 
-
-
-
-
-@hydra.main(version_base=None, config_path="../configs", config_name="base.yaml")
-def main(cfg: DictConfig):
-
-    if cfg.experiment.warm_start is not None and cfg.experiment.warm_start_cfg_override:
-        # Loads warm start config.
-        warm_start_cfg_path = os.path.join(
-            os.path.dirname(cfg.experiment.warm_start), 'trvalte_config.yaml')
-        warm_start_cfg = OmegaConf.load(warm_start_cfg_path)
-
-        # Warm start config may not have latest fields in the base config.
-        # Add these fields to the warm start config.
-        OmegaConf.set_struct(cfg.model, False)
-        OmegaConf.set_struct(warm_start_cfg.model, False)
-        cfg.model = OmegaConf.merge(cfg.model, warm_start_cfg.model)
-        OmegaConf.set_struct(cfg.model, True)
-        log.info(f'Loaded warm start config from {warm_start_cfg_path}')
-
-    run = ModelRun(cfg=cfg)
-    run.train_val()
-
-if __name__ == "__main__":
-    main()
+        devices = GPUtil.getAvailable(
+            order='memory', limit = 8)[:self._infer_cfg.num_gpus]
+        log.info(f"Using devices: {devices}")
+        trainer = Trainer(
+            **self._exp_cfg.trainer,
+            logger=self.logger,
+            use_distributed_sampler=False,  # parallelism handled by CombinedDatasetBatchSampler internally
+            enable_progress_bar=True,
+            enable_model_summary=True,
+            devices=devices,
+        )
+        trainer.predict(
+            model=self._model,
+            datamodule=self._datamodule,        
+        )

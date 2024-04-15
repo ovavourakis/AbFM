@@ -1,7 +1,3 @@
-# TODO: update after changes to base.yaml and models
-# TODO: not sure how this overrides the base.yaml
-# TODO: possibly set up as its own thing, indpendent of base.yaml
-
 defaults:
   - base
   - _self_
@@ -30,27 +26,8 @@ data:
       num_struc_samples: null
       max_batch_size: 1                     # TODO: currently sample() only handles batches of size one
       max_num_res_squared: 500_000          # true_batch_size = min(max_batch_size, max_num_res_squared // seq_len^2 + 1)
-
-
 experiment:
   inference:
     output_dir: inference_outputs/
     ckpt_path: weights/published.ckpt
     name: run_${now:%Y-%m-%d}_${now:%H-%M}
-    seed: 123
-
-    use_gpu: True
-    num_gpus: 2
-
-    interpolant:
-      min_t: 1e-2
-      rots:
-        corrupt: True
-        sample_schedule: exp
-        exp_rate: 10
-      trans:
-        corrupt: True
-        sample_schedule: linear
-      sampling:
-        num_timesteps: 100
-      self_condition: True
