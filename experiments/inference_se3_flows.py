@@ -78,7 +78,7 @@ class Sampler:
 def run(cfg: DictConfig) -> None:
 
     # Read model checkpoint.
-    log.info(f'Specified inference with {cfg.inference.num_gpus} GPUs')
+    log.info(f'Specified inference with {cfg.experiment.inference.num_gpus} GPUs')
     start_time = time.time()
     sampler = Sampler(cfg)
     sampler.run_sampling()

@@ -12,18 +12,19 @@ data:
     loaders:
         num_workers: 4
         prefetch_factor: 10
-  samples:                                  # config for antibodies to generate
-    seed: 123                               # determines random length combos chosen for tot_length
-        min_length: 215
-        max_length: 260
-        min_length_heavy: 109
-        max_length_heavy: 145
-        min_length_light: 99
-        max_length_light: 121
-        samples_per_length: 4
-        length_step: 1
-        length_list: null                   # explicit list of lengths at which to generate
-        overwrite: False
+  inference:
+    samples:                                  # config for antibodies to generate
+      seed: 123                               # determines random length combos chosen for tot_length
+      min_length: 215
+      max_length: 260
+      min_length_heavy: 109
+      max_length_heavy: 145
+      min_length_light: 99
+      max_length_light: 121
+      samples_per_length: 4
+      length_step: 1
+      length_list: null                       # explicit list of lengths at which to generate
+      overwrite: False
     bsampler:
       num_batches_per_epoch_per_gpu: 90     # set close to samples_per_length*num_lengths/num_gpus
       num_struc_samples: null
@@ -31,26 +32,25 @@ data:
       max_num_res_squared: 500_000          # true_batch_size = min(max_batch_size, max_num_res_squared // seq_len^2 + 1)
 
 
-# probably subsume this uder experiment
-inference:
-  # Use this to write with date-time stamp.
-  name: run_${now:%Y-%m-%d}_${now:%H-%M}
-  seed: 123
-  ckpt_path: weights/published.ckpt
-  output_dir: inference_outputs/
+experiment:
+  inference:
+    output_dir: inference_outputs/
+    ckpt_path: weights/published.ckpt
+    name: run_${now:%Y-%m-%d}_${now:%H-%M}
+    seed: 123
 
-  use_gpu: True
-  num_gpus: 2
+    use_gpu: True
+    num_gpus: 2
 
-  interpolant:
-    min_t: 1e-2
-    rots:
-      corrupt: True
-      sample_schedule: exp
-      exp_rate: 10
-    trans:
-      corrupt: True
-      sample_schedule: linear
-    sampling:
-      num_timesteps: 100
-    self_condition: True
+    interpolant:
+      min_t: 1e-2
+      rots:
+        corrupt: True
+        sample_schedule: exp
+        exp_rate: 10
+      trans:
+        corrupt: True
+        sample_schedule: linear
+      sampling:
+        num_timesteps: 100
+      self_condition: True

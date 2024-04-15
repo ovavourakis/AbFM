@@ -96,7 +96,7 @@ model:
 
 # TODO: maybe re-structure after having a look at experiment scripts -> will also affect FlowModule
 # subsume inference under here
-experiment:
+experiment:                       # config for ModelRun
   debug: False
   num_devices: 2
   warm_start_cfg_override: True   # if True, will override this config with the one from the checkpoint

@@ -297,7 +297,7 @@ class DataModule(LightningDataModule):
     def setup(self, stage: str):
         if self.data_cfg.module.inference_only_mode:
             self.gen_set = CombinedDataset(pdb_csv=None, 
-                                           samples_cfg=self.data_cfg.samples)
+                                           samples_cfg=self.data_cfg.inference.samples)
         else:
             # read structure data
             pdb_csv = pd.read_csv(self.data_cfg.dataset.pdbs.csv_path)
@@ -348,7 +348,7 @@ class DataModule(LightningDataModule):
             bsampler_cfg = self.data_cfg.dataset.test.bsampler
         elif type == 'sample':
             dataset = self.gen_set
-            bsampler_cfg = self.data_cfg.samples.bsampler
+            bsampler_cfg = self.data_cfg.inference.bsampler
         else:
             raise ValueError(f'Unknown dataloader type {type}.')
         
