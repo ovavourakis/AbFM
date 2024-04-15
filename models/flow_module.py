@@ -34,8 +34,9 @@ class FlowModule(LightningModule):
         self._exp_cfg = cfg.experiment
 
         self._valid_sample_write_dir = self._exp_cfg.checkpointer.dirpath
-        self._test_sample_write_dir = self._exp_cfg.checkpointer.test_dirpath
-        self._output_dir = self._exp_cfg.inference.output_dir
+        self._test_sample_write_dir = os.path.join(self._exp_cfg.checkpointer.dirpath, 'test')
+        if 'inference' in self._exp_cfg:
+            self._output_dir = self._exp_cfg.inference.output_dir
         os.makedirs(self._valid_sample_write_dir, exist_ok=True)
         os.makedirs(self._test_sample_write_dir, exist_ok=True)
 

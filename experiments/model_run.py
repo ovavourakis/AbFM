@@ -5,7 +5,7 @@ from omegaconf import DictConfig, OmegaConf
 
 import torch
 from pytorch_lightning import LightningDataModule, LightningModule, Trainer
-from pytorch_lightning.self.loggers.wandb import WandbLogger
+from pytorch_lightning.loggers.wandb import WandbLogger
 from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 
@@ -13,7 +13,7 @@ from data.data_module import DataModule
 from models.flow_module import FlowModule
 from experiments import utils as eu
 
-log = eu.get_pyself.logger(__name__) # multi-GPU-friendly python CLI self.logger
+log = eu.get_pylogger(__name__) # multi-GPU-friendly python CLI logger
 torch.set_float32_matmul_precision('high')
 
 class ModelRun:

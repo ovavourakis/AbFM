@@ -6,7 +6,7 @@ data:
         prefetch_factor: 10
   dataset:
     pdbs:
-      csv_path: ./preprocessed/metadata.csv # metadata and paths to preprocessed data per antibody
+      csv_path: ./ab_processed/metadata.csv # metadata and paths to preprocessed data per antibody
       min_num_res: 215
       max_num_res: 260
       subset: null                          # take 1st k instances from dataset that fit the seq-length criteria (null = all)
@@ -43,10 +43,10 @@ data:
         seed: 123                           # determines random length combos chosen for tot_length
         min_length: ${data.dataset.pdbs.min_num_res}
         max_length: ${data.dataset.pdbs.min_num_res}
-        min_length_heavy: ${data.dataset.valid.min_length_heavy}
-        max_length_heavy: ${data.dataset.valid.max_length_heavy}
-        min_length_light: ${data.dataset.valid.min_length_light}
-        max_length_light: ${data.dataset.valid.max_length_light
+        min_length_heavy: ${data.dataset.valid.samples.min_length_heavy}
+        max_length_heavy: ${data.dataset.valid.samples.max_length_heavy}
+        min_length_light: ${data.dataset.valid.samples.min_length_light}
+        max_length_light: ${data.dataset.valid.samples.max_length_light}
         samples_per_length: 5
         length_step: 1
         length_list: null                   # explicit list of lengths at which to generate
@@ -144,7 +144,7 @@ experiment:                       # config for ModelRun
   trainer:
     overfit_batches: 0            # set to non-zero to sanity-check model capacity
     min_epochs: 1                 # prevents early stopping
-    max_epochs: 200
+    max_epochs: 4 #200
     accelerator: gpu
     log_every_n_steps: 1
     deterministic: False          # allow PyTorch to use non-deterministic algorithms
@@ -153,7 +153,6 @@ experiment:                       # config for ModelRun
     accumulate_grad_batches: 2    # accumulate gradient over k * num_GPUs batches
   checkpointer:
     dirpath: ckpt/${experiment.wandb.project}/${experiment.wandb.name}/${now:%Y-%m-%d}_${now:%H-%M-%S}
-    test_dirpath: ckpt/${experiment.wandb.project}/${experiment.wandb.name}/${now:%Y-%m-%d}_${now:%H-%M-%S}/test
     save_last: True
     save_top_k: 3
     monitor: valid/loss           # TODO: we want to monitor AB like-ness of *generations*, too

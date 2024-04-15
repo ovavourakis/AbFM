@@ -305,13 +305,16 @@ class DataModule(LightningDataModule):
             pdb_csv = pdb_csv[pdb_csv.modeled_seq_len <= self.data_cfg.dataset.pdbs.max_num_res]
             pdb_csv = pdb_csv[pdb_csv.modeled_seq_len >= self.data_cfg.dataset.pdbs.min_num_res]
             if self.data_cfg.dataset.pdbs.subset is not None:
-                pdb_csv = pdb_csv.iloc[:self.dataset_cfg.pdbs.subset]
+                pdb_csv = pdb_csv.iloc[:int(self.dataset_cfg.pdbs.subset)]
             pdb_csv = pdb_csv.sort_values('modeled_seq_len', ascending=False)
             
             # train split
             self.train_set = CombinedDataset(pdb_csv=pdb_csv[pdb_csv.split == 'train'],
                                              samples_cfg=None)
-            self._log.info(f'{len(self.train_set)[0]} TRAINING pdbs.')
+            
+            self._log.info(f'{len(self.train_set)[0]} TRAINING pdbs.') # TODO: problem here
+
+
             # val split
             valid_pdbs, valid_gens = None, None
             if self.data_cfg.dataset.valid.use_pdbs:
