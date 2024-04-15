@@ -141,9 +141,6 @@ experiment:
     project: abfm
     save_code: True
     tags: []
-
-
-    
   trainer:
     overfit_batches: 0            # set to non-zero to sanity-check model capacity
     min_epochs: 1                 # prevents early stopping
@@ -153,11 +150,11 @@ experiment:
     deterministic: False          # allow PyTorch to use non-deterministic algorithms
     strategy: ddp
     check_val_every_n_epoch: 2
-    accumulate_grad_batches: 2  # accumulate gradient over k * num_GPUs batches
+    accumulate_grad_batches: 2    # accumulate gradient over k * num_GPUs batches
   checkpointer:
     dirpath: ckpt/${experiment.wandb.project}/${experiment.wandb.name}/${now:%Y-%m-%d}_${now:%H-%M-%S}
     test_dirpath: ckpt/${experiment.wandb.project}/${experiment.wandb.name}/${now:%Y-%m-%d}_${now:%H-%M-%S}/test
     save_last: True
     save_top_k: 3
-    monitor: valid/non_coil_percent # TODO: we want to monitor AB like-ness
-    mode: max    # TODO: fix
+    monitor: valid/loss           # TODO: we want to monitor AB like-ness of *generations*, too
+    mode: min
