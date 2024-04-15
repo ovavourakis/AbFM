@@ -319,46 +319,49 @@ class FlowModule(LightningModule):
 
         # generation-based evaluation
         if len_batch is not None:
-            samples, projections_traj, _, res_idx = self.sample_step(len_batch)
+            pass
+            # TODO: implement sensible metrics to evaluate antibody-likeness or protein-likeness
 
-            samples = samples[-1].numpy()       # just final state
-            len_len_batch = samples.shape[0]                                                # TODO: check this
-            res_idx = du.to_numpy(res_idx)[0]                                               # TODO: check this
+            # samples, projections_traj, _, res_idx = self.sample_step(len_batch)
 
-            if stage == 'valid':
-                writedir = self._valid_sample_write_dir
-                samples_list = self.validation_epoch_samples
-                metrics_list = self.validation_epoch_metrics
-            elif stage == 'test':
-                writedir = self._test_sample_write_dir
-                samples_list = self.test_epoch_samples
-                metrics_list = self.test_epoch_metrics
+            # samples = samples[-1].numpy()       # just final state
+            # len_len_batch = samples.shape[0]                                                # TODO: check this
+            # res_idx = du.to_numpy(res_idx)[0]                                               # TODO: check this
 
-            batch_metrics = []
-            for i in range(len_len_batch):
+            # if stage == 'valid':
+            #     writedir = self._valid_sample_write_dir
+            #     samples_list = self.validation_epoch_samples
+            #     metrics_list = self.validation_epoch_metrics
+            # elif stage == 'test':
+            #     writedir = self._test_sample_write_dir
+            #     samples_list = self.test_epoch_samples
+            #     metrics_list = self.test_epoch_metrics
 
-                # write out sample to PDB file
-                final_pos = samples[i]
-                saved_path = au.write_prot_to_pdb(
-                                final_pos,
-                                os.path.join(writedir,
-                                    f'sample_{i}_idx_{batch_idx}_len_{len(res_idx)}.pdb'),
-                                res_idx=res_idx,
-                                no_indexing=True # no file indexing
-                )
-                if isinstance(self.logger, WandbLogger):
-                    samples_list.append(
-                        [saved_path, self.global_step, wandb.Molecule(saved_path)]
-                    )
+            # batch_metrics = []
+            # for i in range(len_len_batch):
 
-                # calculate evaluation metrics on batch
-                mdtraj_metrics = metrics.calc_mdtraj_metrics(saved_path)
-                ca_idx = residue_constants.atom_order['CA']
-                ca_ca_metrics = metrics.calc_ca_ca_metrics(final_pos[:, ca_idx])
-                batch_metrics.append((mdtraj_metrics | ca_ca_metrics)) # dictionary merge
+            #     # write out sample to PDB file
+            #     final_pos = samples[i]
+            #     saved_path = au.write_prot_to_pdb(
+            #                     final_pos,
+            #                     os.path.join(writedir,
+            #                         f'sample_{i}_idx_{batch_idx}_len_{len(res_idx)}.pdb'),
+            #                     res_idx=res_idx,
+            #                     no_indexing=True # no file indexing
+            #     )
+            #     if isinstance(self.logger, WandbLogger):
+            #         samples_list.append(
+            #             [saved_path, self.global_step, wandb.Molecule(saved_path)]
+            #         )
 
-            metrics_list.append(pd.DataFrame(batch_metrics))
+            #     # calculate evaluation metrics on batch
+            #     mdtraj_metrics = metrics.calc_mdtraj_metrics(saved_path)
+            #     ca_idx = residue_constants.atom_order['CA']
+            #     ca_ca_metrics = metrics.calc_ca_ca_metrics(final_pos[:, ca_idx])
+            #     batch_metrics.append((mdtraj_metrics | ca_ca_metrics)) # dictionary merge
 
+            # metrics_list.append(pd.DataFrame(batch_metrics))
+        
         return loss, len_struc_batch + len_len_batch
         
     def validation_step(self, batch: Any, batch_idx: int):
