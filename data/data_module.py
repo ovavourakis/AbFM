@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, BatchSampler
 from torch.utils.data.distributed import dist
 from pytorch_lightning import LightningDataModule
 
@@ -156,15 +156,15 @@ class CombinedDataset(Dataset):
         return (len_pdb, len_len)
     
     def __getitem__(self, idx):
-        print('INDEX INSIDE COMBINEDDATASET.__getitem__():', idx) # TODO: remove this
+        # print('INDEX INSIDE COMBINEDDATASET.__getitem__():', idx) # TODO: remove this
         pdb_idx, gen_idx = idx # list or None, int or None
 
         chain_feats = self.pdb_data[pdb_idx] if pdb_idx is not None else []
-        gen_feats = self.pdb_data[gen_idx] if gen_idx is not None else []
+        gen_feats = self.len_data[gen_idx] if gen_idx is not None else []
 
-        return chain_feats, gen_feats
+        return (chain_feats, gen_feats)
     
-class CombinedDatasetBatchSampler:
+class CombinedDatasetBatchSampler(BatchSampler):
     """
     Individual batches have shape in 
         [([pdb_idx1, pdb_idx2,...], gen_idx)] or
@@ -172,18 +172,18 @@ class CombinedDatasetBatchSampler:
         [([pdb_idx1, pdb_idx2,...], None)].
     The outer list is necessary, or PyTorch's DataLoader will unpack
     the tuple and not pass it to Dataset.__getitem__() as a tuple.
+
+    The `sampler`, `batch_size`, and `drop_last` arguments are passed to __init__() 
+    only for compatibility with PyTorch Lightning. They are completely ignored.
     """
-    # TODO: fix this mess --------------------------------------------------------------------------------
-    def __init__(self, bsampler_cfg=None, 
+    def __init__(self, *, bsampler_cfg=None, 
                           CombinedDataset=None,
-                          batch_size=None,                  # NOTE NOT USED
-                          drop_last=False,                  # NOTE NOT USED
+                          sampler=None,                     # NOTE: ignored
+                          batch_size=None,                  # NOTE: ignored
+                          drop_last=False,                  # NOTE: ignored
                           shuffle=True,
                           num_replicas=None, rank=None):
-        # super().__init__()
-        self.batch_size = batch_size
-        self.drop_last = drop_last
-
+        
         self._log = logging.getLogger(__name__)
         self.num_replicas = num_replicas
         self.rank = rank
@@ -235,6 +235,8 @@ class CombinedDatasetBatchSampler:
                 "CombinedDatasetBatchSampler: At least one of tot_pdbs or tot_gens must be provided.")
   
         self._log.info(f'Created dataloader rank {self.rank+1} out of {self.num_replicas}.')
+
+        self._create_batches()
          
     def _replica_epoch_batches(self):
         """
@@ -283,17 +285,15 @@ class CombinedDatasetBatchSampler:
                 gen_idx = torch.randperm(self.tot_gens, generator=rng).tolist()
             else:
                 gen_idx = list(range(self.tot_gens))
-
-            replica_gens = [ self.cb_data.len_data._all_sample_ids[i] 
-                                for i in gen_idx[self.rank::self.num_replicas] 
-            ]
+            
+            gen_idx = gen_idx[self.rank::self.num_replicas]
 
         if self.tot_pdbs is None:
-            return [[i] for i in itertools.zip_longest([None]*len(replica_gens), replica_gens)]
+            return [[i] for i in itertools.zip_longest([None]*len(gen_idx), gen_idx)]
         elif self.tot_gens is None:
             return [[i] for i in itertools.zip_longest(sample_order, [None]*len(sample_order))]
         else:
-            return [[i] for i in itertools.zip_longest(sample_order, replica_gens)]
+            return [[i] for i in itertools.zip_longest(sample_order, gen_idx)]
 
     def _create_batches(self):
         # Make sure all replicas have the same number of batches. Otherwise leads to bugs.
@@ -310,7 +310,8 @@ class CombinedDatasetBatchSampler:
         self.sample_order = all_batches
 
     def __iter__(self):
-        self._create_batches()
+        if self.epoch > 0:
+            self._create_batches()
         self.epoch += 1
         # print('inside Batcher.__iter__(): SAMPLE ORDER:', self.sample_order) # TODO: remove this
         return iter(self.sample_order)

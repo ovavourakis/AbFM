@@ -62,6 +62,7 @@ def write_prot_to_pdb(
         save_path = file_path.replace('.pdb', '') + f'_{max_existing_idx+1}.pdb'
     else:
         save_path = file_path
+
     with open(save_path, 'w') as f:
         if prot_pos.ndim == 4:
             for t, pos37 in enumerate(prot_pos):

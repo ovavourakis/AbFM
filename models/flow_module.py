@@ -323,7 +323,7 @@ class FlowModule(LightningModule):
         loss = None
 
         # training-like loss computation
-        if struc_batch is not None:
+        if struc_batch != []:
             loss, len_struc_batch = self.struc_step(struc_batch, stage=stage)
 
         # generation-based evaluation
@@ -429,7 +429,7 @@ class FlowModule(LightningModule):
 
     # TODO: may want to modify so that supports multiple samples in parallel
     #       -> would require changes to interpolant.sample() 
-    def predict_step(self, batch):
+    def predict_step(self, batch, batch_idx: int):
         _, len_batch = batch # ignore any structure batch during inference
 
         assert len_batch != [], 'No samples to predict on.'
@@ -462,7 +462,7 @@ class FlowModule(LightningModule):
             # trajectory of final-state projections as atom coords
             np.flip(du.to_numpy(torch.concat(model_traj, dim=0)), axis=0),
             du.to_numpy(diffuse_mask)[0], # array of 1s (sample-length)
-            du.to_numpy(res_idx)[0],      # residue index (sample-length)
+            du.to_numpy(res_idx),         # residue index (sample-length)
             output_dir=sample_dir,
         )
 
