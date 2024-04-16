@@ -30,12 +30,14 @@ class ModelRun:
             self._model: LightningModule = FlowModule(self._cfg)
         else:
             if stage == 'test':
-                self.ckpt_dir = self._exp_cfg.checkpointer.dirpath
+                ckpt_dir = self._exp_cfg.checkpointer.dirpath
+                self.ckpt_name = os.path.join(ckpt_dir, 
+                                              self._exp_cfg.testing.ckpt_name)
             elif stage == 'sample':
-                self.ckpt_dir =self._exp_cfg.inference.ckpt_path
+                self.ckpt_name =self._exp_cfg.inference.ckpt_path
             
             self._model: LightningModule = FlowModule.load_from_checkpoint(
-                    checkpoint_path=self.ckpt_dir,
+                    checkpoint_path=self.ckpt_name,
                     cfg=self._cfg
             )
             self._model.eval()
@@ -110,13 +112,13 @@ class ModelRun:
 
         # set-up directories to write samples and config to
         os.makedirs(self._exp_cfg.inference.output_dir, exist_ok=True)
-        config_path = os.path.join(self._output_dir, 'sample_config.yaml')
+        config_path = os.path.join(self._exp_cfg.inference.output_dir, 'sample_config.yaml')
         with open(config_path, 'w') as f:
             OmegaConf.save(config=self._cfg, f=f)
-        log.info(f'Saved config and samples to {self._output_dir}')
+        log.info(f'Saved config and samples to {self._exp_cfg.inference.output_dir}')
 
         devices = GPUtil.getAvailable(
-            order='memory', limit = 8)[:self._infer_cfg.num_gpus]
+            order='memory', limit = 8)[:self._exp_cfg.inference.num_gpus]
         log.info(f"Using devices: {devices}")
         trainer = Trainer(
             **self._exp_cfg.trainer,

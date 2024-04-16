@@ -30,5 +30,6 @@ data:
 experiment:
   inference:
     output_dir: inference_outputs/
-    ckpt_path: weights/published.ckpt
+    ckpt_path: ckpt/abfm/train_debug/2024-04-16_15-43-44/last.ckpt #weights/published.ckpt
     name: run_${now:%Y-%m-%d}_${now:%H-%M}
+    num_gpus: 1
