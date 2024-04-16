@@ -11,7 +11,7 @@ def sample(cfg: DictConfig) -> None:
     ckpt_cfg = OmegaConf.load(os.path.join(ckpt_dir, 'trvalte_config.yaml'))
 
     # over-write relevant fields with inference config
-    cfg = eu.merge_configs(cfg, ckpt_cfg)
+    cfg = eu.merge_configs(ckpt_cfg, cfg)
     cfg.experiment.checkpointer.dirpath = './'
 
     run = ModelRun(cfg=cfg, stage='sample')

@@ -156,7 +156,7 @@ class CombinedDataset(Dataset):
         return (len_pdb, len_len)
     
     def __getitem__(self, idx):
-        # print('INDEX INSIDE COMBINEDDATASET.__getitem__():', idx) # TODO: remove this
+        print('INDEX INSIDE COMBINEDDATASET.__getitem__():', idx) # TODO: remove this
         pdb_idx, gen_idx = idx # list or None, int or None
 
         chain_feats = self.pdb_data[pdb_idx] if pdb_idx is not None else []
@@ -173,11 +173,17 @@ class CombinedDatasetBatchSampler:
     The outer list is necessary, or PyTorch's DataLoader will unpack
     the tuple and not pass it to Dataset.__getitem__() as a tuple.
     """
-    def __init__(self, *, bsampler_cfg, 
-                          CombinedDataset, 
+    # TODO: fix this mess --------------------------------------------------------------------------------
+    def __init__(self, bsampler_cfg=None, 
+                          CombinedDataset=None,
+                          batch_size=None,                  # NOTE NOT USED
+                          drop_last=False,                  # NOTE NOT USED
                           shuffle=True,
                           num_replicas=None, rank=None):
-        super().__init__()
+        # super().__init__()
+        self.batch_size = batch_size
+        self.drop_last = drop_last
+
         self._log = logging.getLogger(__name__)
         self.num_replicas = num_replicas
         self.rank = rank
@@ -202,8 +208,6 @@ class CombinedDatasetBatchSampler:
         self.epoch = 0
         self.max_batch_size = self._cfg.max_batch_size
 
-        print('TOT_PDBS:', self.tot_pdbs, 'TOT_GENS:', self.tot_gens, 'NUM_PDBS:', self.num_pdbs)
-
         """
         Each replica needs the same number of batches (otherwise leads to bugs).
         This is a constant that depends on num_examples, num_gpus and desired batch_size, 
@@ -224,6 +228,7 @@ class CombinedDatasetBatchSampler:
         # just gens
         elif self.tot_pdbs is None and self.tot_gens is not None:
             self._num_batches = math.ceil(self.tot_gens / self.num_replicas)
+            print('NUM BATCHES:', self._num_batches)
         # neither
         else:
             raise ValueError(
@@ -278,8 +283,9 @@ class CombinedDatasetBatchSampler:
                 gen_idx = torch.randperm(self.tot_gens, generator=rng).tolist()
             else:
                 gen_idx = list(range(self.tot_gens))
-            replica_gens = self.cb_data.len_data._all_sample_ids[
-                gen_idx[self.rank::self.num_replicas]
+
+            replica_gens = [ self.cb_data.len_data._all_sample_ids[i] 
+                                for i in gen_idx[self.rank::self.num_replicas] 
             ]
 
         if self.tot_pdbs is None:
