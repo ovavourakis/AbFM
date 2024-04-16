@@ -48,10 +48,12 @@ class PdbDataset(Dataset):
         rigids_1 = rigid_utils.Rigid.from_tensor_4x4(chain_feats['rigidgroups_gt_frames'])[:, 0]
         rotmats_1 = rigids_1.get_rots().get_rot_mats()
         trans_1 = rigids_1.get_trans()
-        res_idx = processed_feats['residue_index']
+        
+        # TODO: don't do this conversion here, do it whenever you pre-process the data
+        res_idx = torch.tensor(processed_feats['residue_index'])
 
         # re-index residues starting at 1 (heavy chain) and 1001 (light chain), preserving gaps
-        light_chain_start = torch.argmax((res_idx >= 1000).int())
+        light_chain_start = torch.argmax((res_idx >= 1000).int()).item()
         heavy_chain_res_idx = res_idx[:light_chain_start] - torch.min(res_idx[:light_chain_start]) + 1
         light_chain_res_idx = res_idx[light_chain_start:] - torch.min(res_idx[light_chain_start:]) + 1001
         res_idx = torch.cat([heavy_chain_res_idx, light_chain_res_idx], dim=0)
@@ -70,7 +72,7 @@ class PdbDataset(Dataset):
     def __getitem__(self, idx):
         # return one structure from pdb csv
         csv_row = self.pdb_csv.iloc[idx]
-        chain_feats = self._process_csv_row(csv_row['processed_path'])
+        chain_feats = self._process_csv_row(csv_row['processed_path'].iloc[0])
         chain_feats['csv_idx'] = torch.ones(1, dtype=torch.long) * idx
         return chain_feats
     
@@ -143,26 +145,33 @@ class CombinedDataset(Dataset):
         self.len_data = LengthDataset(samples_cfg=samples_cfg) if samples_cfg is not None else None
         if self.pdb_data is None and self.len_data is None:
             raise ValueError("CombinedDataset: At least one of pdb_data or len_data must be provided.")
-    
+
     def __len__(self):
+        # would have to return integer which is not appropriate for this class
+        raise NotImplementedError("CombinedDataset: __len__ not implemented.")
+    
+    def len(self):
         len_pdb = None if self.pdb_data is None else len(self.pdb_data)
         len_len = None if self.len_data is None else len(self.len_data)
-        return len_pdb, len_len
+        return (len_pdb, len_len)
     
     def __getitem__(self, idx):
+        # print('INDEX INSIDE COMBINEDDATASET.__getitem__():', idx) # TODO: remove this
         pdb_idx, gen_idx = idx # list or None, int or None
 
-        chain_feats = self._pdb_dataset[pdb_idx] if pdb_idx is not None else None
-        gen_feats = self._length_dataset[gen_idx] if gen_idx is not None else None
+        chain_feats = self.pdb_data[pdb_idx] if pdb_idx is not None else []
+        gen_feats = self.pdb_data[gen_idx] if gen_idx is not None else []
 
         return chain_feats, gen_feats
     
 class CombinedDatasetBatchSampler:
     """
-    Batches have shape in 
-        ([pdb_idx1, pdb_idx2,...], gen_idx) or
-        ([None], gen_idx) or
-        ([pdb_idx1, pdb_idx2,...], None).
+    Individual batches have shape in 
+        [([pdb_idx1, pdb_idx2,...], gen_idx)] or
+        [([None], gen_idx)] or
+        [([pdb_idx1, pdb_idx2,...], None)].
+    The outer list is necessary, or PyTorch's DataLoader will unpack
+    the tuple and not pass it to Dataset.__getitem__() as a tuple.
     """
     def __init__(self, *, bsampler_cfg, 
                           CombinedDataset, 
@@ -181,7 +190,7 @@ class CombinedDatasetBatchSampler:
         self._cfg = bsampler_cfg
 
         self.cb_data = CombinedDataset
-        self.tot_pdbs, self.tot_gens = len(self.cb_data)
+        self.tot_pdbs, self.tot_gens = self.cb_data.len()
         if self.tot_pdbs is not None and self._cfg.num_struc_samples is not None:
             self.num_pdbs = min(self.tot_pdbs, self._cfg.num_struc_samples)
         else:
@@ -193,17 +202,32 @@ class CombinedDatasetBatchSampler:
         self.epoch = 0
         self.max_batch_size = self._cfg.max_batch_size
 
+        print('TOT_PDBS:', self.tot_pdbs, 'TOT_GENS:', self.tot_gens, 'NUM_PDBS:', self.num_pdbs)
+
         """
         Each replica needs the same number of batches (otherwise leads to bugs).
         This is a constant that depends on num_examples, num_gpus and desired batch_size, 
         where num_examples is max(num_pdbs, num_gens). 
         We (arbitrarily, but sensibly) choose:
         """
-        if self.tot_pdbs is None or self.tot_pdbs <= self.tot_gens:
-            self._num_batches = math.ceil(self.tot_gens / self.num_replicas)
-        elif self.tot_gens is None or self.tot_pdbs > self.tot_gens:
+        # both datasets present
+        if self.tot_pdbs is not None and self.tot_gens is not None:
+            if self.tot_pdbs <= self.tot_gens:
+                self._num_batches = math.ceil(self.tot_gens / self.num_replicas)
+            else:
+                # self._num_batches = math.ceil( (self.tot_pdbs / self.num_replicas) / self.max_batch_size) * 3
+                self._num_batches = self._cfg.num_batches_per_epoch_per_gpu
+        # just pdbs
+        elif self.tot_pdbs is not None and self.tot_gens is None:
             # self._num_batches = math.ceil( (self.tot_pdbs / self.num_replicas) / self.max_batch_size) * 3
-            self._num_batches = self._cfg.num_batches_per_epoch
+            self._num_batches = self._cfg.num_batches_per_epoch_per_gpu
+        # just gens
+        elif self.tot_pdbs is None and self.tot_gens is not None:
+            self._num_batches = math.ceil(self.tot_gens / self.num_replicas)
+        # neither
+        else:
+            raise ValueError(
+                "CombinedDatasetBatchSampler: At least one of tot_pdbs or tot_gens must be provided.")
   
         self._log.info(f'Created dataloader rank {self.rank+1} out of {self.num_replicas}.')
          
@@ -259,11 +283,11 @@ class CombinedDatasetBatchSampler:
             ]
 
         if self.tot_pdbs is None:
-            return [i for i in itertools.zip_longest([None]*len(replica_gens), replica_gens)]
+            return [[i] for i in itertools.zip_longest([None]*len(replica_gens), replica_gens)]
         elif self.tot_gens is None:
-            return [i for i in itertools.zip_longest(sample_order, [None]*len(sample_order))]
+            return [[i] for i in itertools.zip_longest(sample_order, [None]*len(sample_order))]
         else:
-            return [i for i in itertools.zip_longest(sample_order, replica_gens)]
+            return [[i] for i in itertools.zip_longest(sample_order, replica_gens)]
 
     def _create_batches(self):
         # Make sure all replicas have the same number of batches. Otherwise leads to bugs.
@@ -282,6 +306,7 @@ class CombinedDatasetBatchSampler:
     def __iter__(self):
         self._create_batches()
         self.epoch += 1
+        # print('inside Batcher.__iter__(): SAMPLE ORDER:', self.sample_order) # TODO: remove this
         return iter(self.sample_order)
 
     def __len__(self):
@@ -305,16 +330,13 @@ class DataModule(LightningDataModule):
             pdb_csv = pdb_csv[pdb_csv.modeled_seq_len <= self.data_cfg.dataset.pdbs.max_num_res]
             pdb_csv = pdb_csv[pdb_csv.modeled_seq_len >= self.data_cfg.dataset.pdbs.min_num_res]
             if self.data_cfg.dataset.pdbs.subset is not None:
-                pdb_csv = pdb_csv.iloc[:int(self.dataset_cfg.pdbs.subset)]
+                pdb_csv = pdb_csv.iloc[:int(self.data_cfg.dataset.pdbs.subset)]
             pdb_csv = pdb_csv.sort_values('modeled_seq_len', ascending=False)
             
             # train split
             self.train_set = CombinedDataset(pdb_csv=pdb_csv[pdb_csv.split == 'train'],
                                              samples_cfg=None)
-            
-            self._log.info(f'{len(self.train_set)[0]} TRAINING pdbs.') # TODO: problem here
-
-
+            self._log.info(f'{self.train_set.len()[0]} TRAINING pdbs.')
             # val split
             valid_pdbs, valid_gens = None, None
             if self.data_cfg.dataset.valid.use_pdbs:
@@ -323,8 +345,8 @@ class DataModule(LightningDataModule):
                 valid_gens = self.data_cfg.dataset.valid.samples
             self.valid_set = CombinedDataset(pdb_csv=valid_pdbs, 
                                              samples_cfg=valid_gens)
-            self._log.info(f'{len(self.valid_set)[0]} VALIDATION pdbs; will sub-sample {self.data_cfg.dataset.valid.bsampler.num_struc_samples} per validation.')
-            self._log.info(f'Will also generate {len(self.valid_set)[1]} samples per validation.')
+            self._log.info(f'{self.valid_set.len()[0]} VALIDATION pdbs; will sub-sample {self.data_cfg.dataset.valid.bsampler.num_struc_samples} per validation.')
+            self._log.info(f'Will also generate {self.valid_set.len()[1]} samples per validation.')
             # test split
             test_pdbs, test_gens = None, None
             if self.data_cfg.dataset.test.use_pdbs:
@@ -333,8 +355,8 @@ class DataModule(LightningDataModule):
                 test_gens = self.data_cfg.dataset.test.samples
             self.test_set = CombinedDataset(pdb_csv=test_pdbs,
                                             samples_cfg=test_gens)
-            self._log.info(f'{len(self.test_set)[0]} TESTING pdbs.')
-            self._log.info(f'Will also generate {len(self.test_set)[1]} samples per test.')
+            self._log.info(f'{self.test_set.len()[0]} TESTING pdbs.')
+            self._log.info(f'Will also generate {self.test_set.len()[1]} samples per test.')
 
     def get_dataloader(self, type, rank=None, num_replicas=None):
         num_workers = self.data_cfg.module.loaders.num_workers

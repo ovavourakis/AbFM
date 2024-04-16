@@ -26,10 +26,13 @@ class NodeEmbedder(nn.Module):
     def forward(self, timesteps, mask, pos):
         b, num_res, device = mask.shape[0], mask.shape[1], mask.device
 
-        # [b, n_res, c_pos_emb]
-        pos = pos.to(dtype=torch.float32).to(device)[None]
+        # [b, n_res]
+        # pos = pos.to(dtype=torch.float32).to(device)[None]
+        pos = pos.to(dtype=torch.float32).to(device)
 
+        # [b, n_res, c_pos_emb]
         pos_emb = get_index_embedding(pos, self.c_pos_emb, max_len=2056)
+
         pos_emb = pos_emb.repeat([b, 1, 1])
         pos_emb = pos_emb * mask.unsqueeze(-1)
 

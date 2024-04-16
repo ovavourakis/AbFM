@@ -42,7 +42,8 @@ class EdgeEmbedder(nn.Module):
         p_i = self.linear_s_p(s)
         cross_node_feats = self._cross_concat(p_i, num_batch, num_res)
 
-        pos = p_idx.to(s.device).unsqueeze(0).repeat(num_batch, 1)
+        # pos = p_idx.to(s.device).unsqueeze(0).repeat(num_batch, 1)
+        pos = p_idx.to(s.device).repeat(num_batch, 1)
         relpos_feats = self.embed_relpos(pos)
 
         dist_feats = calc_distogram(

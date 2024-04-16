@@ -12,7 +12,8 @@ data:
       subset: null                          # take 1st k instances from dataset that fit the seq-length criteria (null = all)
     train:
       bsampler:                             # config for batch sampler
-        num_batches_per_epoch_per_gpu: 2000 # more than train_strucs/num_gpus/max_batch_size; same value as in FrameFlow
+        seed: 123
+        num_batches_per_epoch_per_gpu: 2 #2000 # more than train_strucs/num_gpus/max_batch_size; same value as in FrameFlow
         num_struc_samples: null             # train on all structures in train set
         max_batch_size: 100
         max_num_res_squared: 500_000        # true_batch_size = min(max_batch_size, max_num_res_squared // seq_len^2 + 1)   
@@ -32,6 +33,7 @@ data:
         length_list: null                   # explicit list of lengths at which to generate
         overwrite: False
       bsampler:                             # config for batch sampler
+        seed: 123
         num_batches_per_epoch_per_gpu: 1    # set close to num_struc_samples/num_gpus/
         num_struc_samples: 100
         max_batch_size: 50
@@ -52,6 +54,7 @@ data:
         length_list: null                   # explicit list of lengths at which to generate
         overwrite: False
       bsampler:                             # config for batch sampler
+        seed: 123
         num_batches_per_epoch_per_gpu: 75   # set close to test_strucs/num_gpu/max_batch_size
         num_struc_samples: null
         max_batch_size: 100
@@ -155,5 +158,5 @@ experiment:                       # config for ModelRun
     dirpath: ckpt/${experiment.wandb.project}/${experiment.wandb.name}/${now:%Y-%m-%d}_${now:%H-%M-%S}
     save_last: True
     save_top_k: 3
-    monitor: valid/loss           # TODO: we want to monitor AB like-ness of *generations*, too
+    monitor: valid/loss       # TODO: we want to monitor AB like-ness of *generations*, too
     mode: min

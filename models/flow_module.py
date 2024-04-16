@@ -243,10 +243,16 @@ class FlowModule(LightningModule):
         # total loss
         if stage == 'train':
             specified_loss = self._exp_cfg.training.loss
+            on_epoch = False
+            on_step = True
         elif stage == 'valid':
             specified_loss = self._exp_cfg.validation.loss
+            on_epoch = True
+            on_step = False
         elif stage == 'test':
             specified_loss = self._exp_cfg.testing.loss
+            on_epoch = True
+            on_step = False
 
         loss = (
             total_losses[specified_loss]
@@ -258,8 +264,10 @@ class FlowModule(LightningModule):
             +  total_losses['auxiliary_loss']
             # =====================================================================
         )
-        self._log_scalar(f"{stage}/loss", loss, batch_size=num_batch)
-
+        self._log_scalar(f"{stage}/loss", loss, 
+                         batch_size=num_batch,
+                         on_step=on_step,
+                         on_epoch=on_epoch)
         return loss
     
     def struc_step(self, struc_batch, stage='train'):
@@ -319,7 +327,7 @@ class FlowModule(LightningModule):
             loss, len_struc_batch = self.struc_step(struc_batch, stage=stage)
 
         # generation-based evaluation
-        if len_batch is not None:
+        if len_batch != []:
             pass
             # TODO: implement sensible metrics to evaluate antibody-likeness or protein-likeness
 
@@ -400,17 +408,18 @@ class FlowModule(LightningModule):
                 data=samples_list)
             samples_list.clear()
 
-        epoch_metrics = pd.concat(metrics_list)
-        for metric_name, metric_val in epoch_metrics.mean().to_dict().items():
-            self._log_scalar(
-                f'{stage}/{metric_name}',
-                metric_val,
-                on_step=False,
-                on_epoch=True,
-                prog_bar=False,
-                batch_size=len(epoch_metrics),
-            )
-        metrics_list.clear()
+        if len(metrics_list) > 0:
+            epoch_metrics = pd.concat(metrics_list)
+            for metric_name, metric_val in epoch_metrics.mean().to_dict().items():
+                self._log_scalar(
+                    f'{stage}/{metric_name}',
+                    metric_val,
+                    on_step=False,
+                    on_epoch=True,
+                    prog_bar=False,
+                    batch_size=len(epoch_metrics),
+                )
+            metrics_list.clear()
 
     def on_validation_epoch_end(self):
         self.end_val_test_epoch(stage='valid')
@@ -422,6 +431,8 @@ class FlowModule(LightningModule):
     #       -> would require changes to interpolant.sample() 
     def predict_step(self, batch):
         _, len_batch = batch # ignore any structure batch during inference
+
+        assert len_batch != [], 'No samples to predict on.'
         
         # read off some constants
         len_h, len_l = len_batch['len_h'], len_batch['len_l']
