@@ -34,7 +34,7 @@ data:
         overwrite: False
       bsampler:                             # config for batch sampler
         seed: 123
-        num_batches_per_epoch_per_gpu: 1    # set close to num_struc_samples/num_gpus/
+        num_batches_per_epoch_per_gpu: 1    # set close to num_struc_samples/num_gpus/ (and allow enough for all samples)
         num_struc_samples: 100
         max_batch_size: 50
         max_num_res_squared: 500_000        # true_batch_size = min(max_batch_size, max_num_res_squared // seq_len^2 + 1)   
@@ -49,7 +49,7 @@ data:
         max_length_heavy: ${data.dataset.valid.samples.max_length_heavy}
         min_length_light: ${data.dataset.valid.samples.min_length_light}
         max_length_light: ${data.dataset.valid.samples.max_length_light}
-        samples_per_length: 5
+        samples_per_length: 1
         length_step: 1
         length_list: null                   # explicit list of lengths at which to generate
         overwrite: False
@@ -97,8 +97,6 @@ model:
     seq_tfmr_num_layers: 2
     num_blocks: 6
 
-# TODO: maybe re-structure after having a look at experiment scripts -> will also affect FlowModule
-# subsume inference under here
 experiment:                       # config for ModelRun
   debug: False
   num_devices: 2

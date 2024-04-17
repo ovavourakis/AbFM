@@ -156,7 +156,6 @@ class CombinedDataset(Dataset):
         return (len_pdb, len_len)
     
     def __getitem__(self, idx):
-        # print('INDEX INSIDE COMBINEDDATASET.__getitem__():', idx) # TODO: remove this
         pdb_idx, gen_idx = idx # list or None, int or None
 
         chain_feats = self.pdb_data[pdb_idx] if pdb_idx is not None else []
@@ -194,6 +193,9 @@ class CombinedDatasetBatchSampler(BatchSampler):
         self.seed = bsampler_cfg.seed
         self.shuffle = shuffle
         self._cfg = bsampler_cfg
+
+        print(f'INSIDE CombinedDatasetBatchSampler.__init__() on RANK {self.rank}')
+        print(f'SEED for RANK {self.rank}: {self.seed}')
 
         self.cb_data = CombinedDataset
         self.tot_pdbs, self.tot_gens = self.cb_data.len()
@@ -280,6 +282,7 @@ class CombinedDatasetBatchSampler(BatchSampler):
             sample_order = [sample_order[i] for i in new_order]
         
         if self.tot_gens is not None:
+            print(f'INSIDE _replica_epoch_batches() on RANK {self.rank}: TOT GENS IS NOT NONE')
             if self.shuffle:
                 gen_idx = torch.randperm(self.tot_gens, generator=rng).tolist()
             else:
@@ -295,6 +298,9 @@ class CombinedDatasetBatchSampler(BatchSampler):
             return [[i] for i in itertools.zip_longest(sample_order, gen_idx)]
 
     def _create_batches(self):
+        
+        print(f'INSIDE _create_batches() on RANK {self.rank}')
+
         # Make sure all replicas have the same number of batches. Otherwise leads to bugs.
         # See bugs with shuffling https://github.com/Lightning-AI/lightning/issues/10947
         all_batches = []
@@ -309,10 +315,11 @@ class CombinedDatasetBatchSampler(BatchSampler):
         self.sample_order = all_batches
 
     def __iter__(self):
+        print(f'ENTERED __iter__() on RANK {self.rank}')    # TODO: remove this
         if self.epoch > 0:
             self._create_batches()
         self.epoch += 1
-        # print('inside Batcher.__iter__(): SAMPLE ORDER:', self.sample_order) # TODO: remove this
+        print(f'inside Batcher.__iter__() for RANK {self.rank}: SAMPLE ORDER:', self.sample_order) # TODO: remove this
         return iter(self.sample_order)
 
     def __len__(self):
@@ -335,13 +342,14 @@ class DataModule(LightningDataModule):
             # apply global filters
             pdb_csv = pdb_csv[pdb_csv.modeled_seq_len <= self.data_cfg.dataset.pdbs.max_num_res]
             pdb_csv = pdb_csv[pdb_csv.modeled_seq_len >= self.data_cfg.dataset.pdbs.min_num_res]
+
             if self.data_cfg.dataset.pdbs.subset is not None:
                 pdb_csv = pdb_csv.iloc[:int(self.data_cfg.dataset.pdbs.subset)]
             pdb_csv = pdb_csv.sort_values('modeled_seq_len', ascending=False)
             
             # train split
             self.train_set = CombinedDataset(pdb_csv=pdb_csv[pdb_csv.split == 'train'],
-                                             samples_cfg=None)
+                                                samples_cfg=None)
             self._log.info(f'{self.train_set.len()[0]} TRAINING pdbs.')
             # val split
             valid_pdbs, valid_gens = None, None

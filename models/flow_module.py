@@ -331,6 +331,7 @@ class FlowModule(LightningModule):
             samples, projections_traj, _, res_idx = self.sample_step(len_batch)
 
             # TODO: implement sensible metrics to evaluate antibody-likeness or protein-likeness
+            
             # samples = samples[-1].numpy()       # just final state
             # len_len_batch = samples.shape[0]                                                # TODO: check this
             # res_idx = du.to_numpy(res_idx)                                                  # TODO: check this
