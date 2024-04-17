@@ -26,6 +26,7 @@ def create_full_prot(
     else:
         residue_index = res_idx
         chain_index = np.where(residue_index <= 1000, 0, 1)
+        residue_index = np.where(residue_index <= 1000, residue_index, residue_index - 1000)
     
     if b_factors is None:
         b_factors = np.zeros([n, 37])
