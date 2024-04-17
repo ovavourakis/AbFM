@@ -25,7 +25,7 @@ data:
       seed: 123
       # num_batches_per_epoch_per_gpu: 90     # set close to samples_per_length*num_lengths/num_gpus
       num_struc_samples: null
-      max_batch_size: 1                     # TODO: currently sample() only handles batches of size one
+      max_batch_size: 1                                   # TODO: currently sample() only handles batches of size one
       max_num_res_squared: 500_000          # true_batch_size = min(max_batch_size, max_num_res_squared // seq_len^2 + 1)
 
 experiment:
@@ -33,7 +33,7 @@ experiment:
     output_dir: inference_outputs/
     ckpt_path: ckpt/abfm/train_debug/2024-04-16_15-43-44/last.ckpt #weights/published.ckpt 
     name: run_${now:%Y-%m-%d}_${now:%H-%M}
-    num_gpus: 2
+    num_gpus: ${experiment.num_devices}                   # TODO: handle this in code
   wandb:
     name: inference_debug
     project: abfm
