@@ -228,7 +228,6 @@ class CombinedDatasetBatchSampler(BatchSampler):
         # just gens
         elif self.tot_pdbs is None and self.tot_gens is not None:
             self._num_batches = math.ceil(self.tot_gens / self.num_replicas)
-            print('NUM BATCHES:', self._num_batches)
         # neither
         else:
             raise ValueError(

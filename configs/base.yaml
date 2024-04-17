@@ -19,11 +19,11 @@ data:
         max_num_res_squared: 500_000        # true_batch_size = min(max_batch_size, max_num_res_squared // seq_len^2 + 1)   
     valid:
       use_pdbs: True                        # run validation on known structures
-      generate: False                       # also validate some de-novo generations (currently undefined how to do that)
+      generate: True                        # also validate some de-novo generations (currently undefined how to do that)
       samples:
         seed: 123                           # determines random length combos chosen for tot_length
-        min_length: ${data.dataset.pdbs.min_num_res}
-        max_length: ${data.dataset.pdbs.min_num_res}
+        min_length: 255 #${data.dataset.pdbs.min_num_res}
+        max_length: ${data.dataset.pdbs.max_num_res}
         min_length_heavy: 109
         max_length_heavy: 145
         min_length_light: 99
@@ -40,11 +40,11 @@ data:
         max_num_res_squared: 500_000        # true_batch_size = min(max_batch_size, max_num_res_squared // seq_len^2 + 1)   
     test:
       use_pdbs: True                        # run test on known structures
-      generate: False                       # also generate some de-novo structures and run tests on them (currently undefined how to do that)
+      generate: True                       # also generate some de-novo structures and run tests on them (currently undefined how to do that)
       samples:
         seed: 123                           # determines random length combos chosen for tot_length
-        min_length: ${data.dataset.pdbs.min_num_res}
-        max_length: ${data.dataset.pdbs.min_num_res}
+        min_length: 255 #${data.dataset.pdbs.min_num_res}
+        max_length: ${data.dataset.pdbs.max_num_res}
         min_length_heavy: ${data.dataset.valid.samples.min_length_heavy}
         max_length_heavy: ${data.dataset.valid.samples.max_length_heavy}
         min_length_light: ${data.dataset.valid.samples.min_length_light}
