@@ -194,9 +194,6 @@ class CombinedDatasetBatchSampler(BatchSampler):
         self.shuffle = shuffle
         self._cfg = bsampler_cfg
 
-        print(f'INSIDE CombinedDatasetBatchSampler.__init__() on RANK {self.rank}')
-        print(f'SEED for RANK {self.rank}: {self.seed}')
-
         self.cb_data = CombinedDataset
         self.tot_pdbs, self.tot_gens = self.cb_data.len()
         if self.tot_pdbs is not None and self._cfg.num_struc_samples is not None:
@@ -282,7 +279,6 @@ class CombinedDatasetBatchSampler(BatchSampler):
             sample_order = [sample_order[i] for i in new_order]
         
         if self.tot_gens is not None:
-            print(f'INSIDE _replica_epoch_batches() on RANK {self.rank}: TOT GENS IS NOT NONE')
             if self.shuffle:
                 gen_idx = torch.randperm(self.tot_gens, generator=rng).tolist()
             else:
@@ -298,9 +294,6 @@ class CombinedDatasetBatchSampler(BatchSampler):
             return [[i] for i in itertools.zip_longest(sample_order, gen_idx)]
 
     def _create_batches(self):
-        
-        print(f'INSIDE _create_batches() on RANK {self.rank}')
-
         # Make sure all replicas have the same number of batches. Otherwise leads to bugs.
         # See bugs with shuffling https://github.com/Lightning-AI/lightning/issues/10947
         all_batches = []
@@ -315,11 +308,9 @@ class CombinedDatasetBatchSampler(BatchSampler):
         self.sample_order = all_batches
 
     def __iter__(self):
-        print(f'ENTERED __iter__() on RANK {self.rank}')    # TODO: remove this
         if self.epoch > 0:
             self._create_batches()
         self.epoch += 1
-        print(f'inside Batcher.__iter__() for RANK {self.rank}: SAMPLE ORDER:', self.sample_order) # TODO: remove this
         return iter(self.sample_order)
 
     def __len__(self):

@@ -32,6 +32,7 @@ class FlowModule(LightningModule):
 
         self._interpolant_cfg = cfg.interpolant
         self._exp_cfg = cfg.experiment
+        self.sync_dist = cfg.experiment.sync_dist
 
         self._valid_sample_write_dir = self._exp_cfg.checkpointer.dirpath
         self._test_sample_write_dir = os.path.join(self._exp_cfg.checkpointer.dirpath, 'test')
@@ -70,7 +71,7 @@ class FlowModule(LightningModule):
             on_epoch=on_epoch,
             prog_bar=prog_bar,
             batch_size=batch_size,
-            sync_dist=sync_dist,
+            sync_dist=self.sync_dist,
             rank_zero_only=rank_zero_only
         )
 
@@ -302,7 +303,8 @@ class FlowModule(LightningModule):
                  epoch_time,
                  on_step=False,
                  on_epoch=True,
-                 prog_bar=False
+                 prog_bar=False,
+                 sync_dist=self.sync_dist,
         )
         self._epoch_start_time = time.time()
 
@@ -331,7 +333,7 @@ class FlowModule(LightningModule):
             samples, projections_traj, _, res_idx = self.sample_step(len_batch)
 
             # TODO: implement sensible metrics to evaluate antibody-likeness or protein-likeness
-            
+
             # samples = samples[-1].numpy()       # just final state
             # len_len_batch = samples.shape[0]                                                # TODO: check this
             # res_idx = du.to_numpy(res_idx)                                                  # TODO: check this
