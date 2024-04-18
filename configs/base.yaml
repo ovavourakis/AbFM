@@ -13,7 +13,7 @@ data:
     train:
       bsampler:                             # config for batch sampler
         seed: 123                           # determines random order of samples
-        num_batches_per_epoch_per_gpu: 2000 # more than train_strucs/num_gpus/max_batch_size; same value as in FrameFlow
+        num_batches_per_epoch_per_gpu: 2000 # more than train_strucs/num_gpus/max_batch_size; same value as in FrameFlow                      # TODO: depends on num_devices; Richtwert 2k if 2 gpus
         num_struc_samples: null             # null: train on all structures in train set; else subsample top k
         max_batch_size: 100
         max_num_res_squared: 500_000        # true_batch_size = min(max_batch_size, max_num_res_squared // seq_len^2 + 1)   
@@ -34,7 +34,7 @@ data:
         overwrite: False
       bsampler:                             # config for batch sampler
         seed: 123                           # determines random order of samples
-        num_batches_per_epoch_per_gpu: 5    # max (num_valid_struc_SUBsamples/num_gpus/max_batch_size ; all desired generations)              # TODO: update this in the code
+        num_batches_per_epoch_per_gpu: 5    # max (num_valid_struc_SUBsamples/num_gpus/max_batch_size ; all desired generations)              # TODO: update this in the code, depends on num_devices
         num_struc_samples: 100
         max_batch_size: 10                                                                                                                    # TODO: update this
         max_num_res_squared: 500_000        # true_batch_size = min(max_batch_size, max_num_res_squared // seq_len^2 + 1)   
@@ -55,7 +55,7 @@ data:
         overwrite: False
       bsampler:                             # config for batch sampler
         seed: 123                           # determines random order of samples
-        num_batches_per_epoch_per_gpu: 75   # set close to test_strucs/num_gpu/max_batch_size
+        num_batches_per_epoch_per_gpu: 75   # set close to test_strucs/num_gpu/max_batch_size                                                  # TODO: depends on num_devices
         num_struc_samples: null
         max_batch_size: 100
         max_num_res_squared: 500_000        # true_batch_size = min(max_batch_size, max_num_res_squared // seq_len^2 + 1)
