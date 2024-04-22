@@ -174,7 +174,7 @@ class FlowModule(LightningModule):
         auxiliary_loss = (bb_atom_loss + dist_mat_loss) * (
             t[:, 0] > cfg.aux_loss_t_pass
         )
-        auxiliary_loss *= self._exp_cfg.training.aux_loss_weight
+        auxiliary_loss *= cfg.aux_loss_weight
 
         tot_loss = se3_vf_loss + auxiliary_loss
         if torch.isnan(tot_loss).any():
@@ -262,7 +262,7 @@ class FlowModule(LightningModule):
             #       but this is how it was in the original code)
             #       deleting this line and setting aux_loss_weight: 2 in the config  
             #       should be equivalent
-            +  total_losses['auxiliary_loss']
+            # +  total_losses['auxiliary_loss']
             # =====================================================================
         )
         self._log_scalar(f"{stage}/loss", loss, 
