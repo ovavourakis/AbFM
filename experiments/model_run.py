@@ -27,7 +27,13 @@ class ModelRun:
         self._datamodule: LightningDataModule = DataModule(self._data_cfg)
         # initialise model
         if stage == 'train': 
-            self._model: LightningModule = FlowModule(self._cfg)
+            if self._exp_cfg.warm_start_cfg_override and self._exp_cfg.warm_start_weights is not None:
+                self._model: LightningModule = FlowModule.load_from_checkpoint(
+                    checkpoint_path=self._exp_cfg.warm_start_weights,
+                    cfg=self._cfg
+                )
+            else:
+                self._model: LightningModule = FlowModule(self._cfg)
         else:
             if stage == 'test':
                 ckpt_dir = self._exp_cfg.checkpointer.dirpath

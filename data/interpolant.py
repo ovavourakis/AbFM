@@ -55,7 +55,9 @@ class Interpolant:
     def set_device(self, device):
         self._device = device
 
-    def sample_t(self, num_batch): # theoretically in [0,1)
+    def sample_t(self, num_batch): 
+       # theoretically in [0,1)
+       # practically in [min_t, 1-min_t]
        t = torch.rand(num_batch, device=self._device)
        return t * (1 - 2*self._cfg.min_t) + self._cfg.min_t
 
@@ -115,7 +117,14 @@ class Interpolant:
         )
         return _rots_diffuse_mask(rotmats_t, rotmats_1, res_mask)
 
-    def corrupt_batch(self, batch):        
+    def corrupt_batch(self, batch):       
+        
+        # NOTE: WARNING !!! ======================================================
+        # altered during fiddling with training
+        # however, this should not have changed results, because we used all-linear
+        # training schedules anyway
+        # ======================================================================== 
+
         # to be called on structure batches only! (not during inference/sampling!)
         noisy_batch = copy.deepcopy(batch)
         # [B, N, 3]
@@ -126,10 +135,10 @@ class Interpolant:
         res_mask = batch['res_mask']
         num_batch, _ = res_mask.shape
         # [B, 1]
-        t = self.sample_t(num_batch)[:, None]
+        tau = self.sample_t(num_batch)[:, None]
 
         # NOTE: WARNING !!! newly added !!! ========================
-        t = self.sample_kappa(t, component='trans')
+        t = self.sample_kappa(tau, component='trans')
         # ==========================================================
 
         noisy_batch['t'] = t
@@ -139,7 +148,7 @@ class Interpolant:
         noisy_batch['trans_t'] = trans_t
 
         # NOTE: WARNING !!! newly added !!! ========================
-        t_rot = self.sample_kappa(t, component='rots')
+        t_rot = self.sample_kappa(tau, component='rots')
         noisy_batch['t_rot'] = t_rot
         rotmats_t = self._corrupt_rotmats(rotmats_1, t_rot, res_mask)
         # ==========================================================
@@ -256,7 +265,7 @@ class Interpolant:
             We could potentially even truncate the sampling after a few steps and use the final-t prediction,
             if it's good enough.
             '''
-            # take reverse step
+            # take step
             d_t = t_2 - t_1
             trans_t_2 = self._trans_euler_step(
                 d_t, t_1, pred_trans_1, trans_t_1)
@@ -265,20 +274,24 @@ class Interpolant:
             prot_traj.append((trans_t_2, rotmats_t_2))
             t_1 = t_2
 
-        # We only integrated to min_t, so need to make a final step
-        t_1 = ts[-1]
-        trans_t_1, rotmats_t_1 = prot_traj[-1]
-        batch['trans_t'] = trans_t_1
-        batch['rotmats_t'] = rotmats_t_1
-        batch['t'] = torch.ones((num_batch, 1), device=self._device) * t_1
-        with torch.no_grad():
-            model_out = model(batch)
-        pred_trans_1 = model_out['pred_trans']
-        pred_rotmats_1 = model_out['pred_rotmats']
-        clean_traj.append(
-            (pred_trans_1.detach().cpu(), pred_rotmats_1.detach().cpu())
-        )
-        prot_traj.append((pred_trans_1, pred_rotmats_1))
+        # NOTE: WARNING !!! ======================================================
+        # I don't think this final step is not necessary for FM, just diffusion.
+        # ========================================================================
+
+        # # We only integrated to min_t, so need to make a final step
+        # t_1 = ts[-1]
+        # trans_t_1, rotmats_t_1 = prot_traj[-1]
+        # batch['trans_t'] = trans_t_1
+        # batch['rotmats_t'] = rotmats_t_1
+        # batch['t'] = torch.ones((num_batch, 1), device=self._device) * t_1
+        # with torch.no_grad():
+        #     model_out = model(batch)
+        # pred_trans_1 = model_out['pred_trans']
+        # pred_rotmats_1 = model_out['pred_rotmats']
+        # clean_traj.append(
+        #     (pred_trans_1.detach().cpu(), pred_rotmats_1.detach().cpu())
+        # )
+        # prot_traj.append((pred_trans_1, pred_rotmats_1))
 
         # Convert trajectories to atom37.
         atom37_traj = all_atom.transrot_to_atom37(prot_traj, res_mask)

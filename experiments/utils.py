@@ -116,6 +116,7 @@ def merge_configs(cfg: DictConfig, ckpt_new: DictConfig) -> DictConfig:
     return cfg
 
 def load_warmstart_config(cfg: DictConfig) -> DictConfig:
+    log = get_pylogger(__name__) # multi-GPU-friendly python CLI logger
     
     if cfg.experiment.warm_start is not None and cfg.experiment.warm_start_cfg_override:
         # load warm-start config

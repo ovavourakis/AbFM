@@ -102,25 +102,24 @@ experiment:                       # config for ModelRun
   num_devices: 2                  # number of GPUs to use
   sync_dist: True                 # sync val and test metrics across GPUs                                                                                   # TODO: depends on previous
   warm_start_cfg_override: True   # if True, will override this config with the one from the checkpoint
-  warm_start: null                # path to directory that contains config of checkpoint to warm-start from
+  warm_start: null                # path to directory that contains *config* of checkpoint to warm-start from
+  warm_start_weights: weights/published.ckpt # fine-tune starting from these weigths
   training:
     loss: tot_loss                # in {"tot_loss", "bb_atom_loss", "trans_loss", "dist_mat_loss", "auxiliary_loss", "rots_vf_loss", "se3_vf_loss"}         # TODO: mind this choice
-                                  # ! WARNING ! : will return the loss specified + 'auxiliary_loss' (FlowModule->loss_agg_and_log())
     translation_loss_weight: 2.0
     rotation_loss_weights: 1.0
     aux_loss_weight: 1.0          # in relation to rototrans-losses considered together
-    aux_loss_t_pass: 0.25         # use auxiliary losses from t in [0,k]; k<1
-    t_normalize_clip: 0.9         # clip loss normaliser 1/(1-t) to [1/(0.1), 1/1]
+    aux_loss_t_pass: 0.75         # use auxiliary losses from t in [k,1]; 0<k<1
+    t_normalize_clip: 0.9         # clip loss normaliser 1/(1-min(t,0.9))
     bb_atom_scale: 0.1            # convert coordinates from Angstrom to nm
     trans_scale: 0.1              # convert coordinates from Angstrom to nm
     min_plddt_mask: null          # NOTE: filter implemented, but our pre-processing does not read it out of our structures, so would have to re-work that first
   validation:
     loss: tot_loss                # in {"tot_loss", "bb_atom_loss", "trans_loss", "dist_mat_loss", "auxiliary_loss", "rots_vf_loss", "se3_vf_loss"}
-                                  # ! WARNING ! : will return the loss specified + 'auxiliary_loss' (FlowModule->loss_agg_and_log())
     translation_loss_weight: 2.0
     rotation_loss_weights: 1.0
     aux_loss_weight: 1.0          # in relation to rototrans-losses considered together
-    aux_loss_t_pass: 0.25         # use auxiliary losses from t in [0,k]; k<1
+    aux_loss_t_pass: 0.75         # use auxiliary losses from t in [0,k]; k<1
     t_normalize_clip: 0.9         # clip loss normaliser 1/(1-t) to [1/(0.1), 1/1]
     bb_atom_scale: 0.1            # convert coordinates from Angstrom to nm
     trans_scale: 0.1              # convert coordinates from Angstrom to nm
@@ -128,19 +127,18 @@ experiment:                       # config for ModelRun
   testing:
     ckpt_name : last.ckpt         # located in checkpointer.dirpath
     loss: tot_loss                # in {"tot_loss", "bb_atom_loss", "trans_loss", "dist_mat_loss", "auxiliary_loss", "rots_vf_loss", "se3_vf_loss"}
-                                  # ! WARNING ! : will return the loss specified + 'auxiliary_loss' (FlowModule->loss_agg_and_log())
     translation_loss_weight: 2.0
     rotation_loss_weights: 1.0
     aux_loss_weight: 1.0          # in relation to rototrans-losses considered together
-    aux_loss_t_pass: 0.25         # use auxiliary losses from t in [0,k]; k<1
+    aux_loss_t_pass: 0.75         # use auxiliary losses from t in [0,k]; k<1
     t_normalize_clip: 0.9         # clip loss normaliser 1/(1-t) to [1/(0.1), 1/1]
     bb_atom_scale: 0.1            # convert coordinates from Angstrom to nm
     trans_scale: 0.1              # convert coordinates from Angstrom to nm
     min_plddt_mask: null          # NOTE: filter implemented, but our pre-processing does not read it out of our structures, so would have to re-work that first
   optimizer:
-    lr: 0.0001
+    lr: 0.00002 # 0.0001          # reduced for fine-tuning
   wandb:
-    name: train1
+    name: ftnl_auxloss_lastquarter
     project: abfm
     save_code: True
     tags: []

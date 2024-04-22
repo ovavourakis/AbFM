@@ -6,7 +6,7 @@ data:
   module:
     inference_only_mode: True
     loaders:
-        num_workers: 4
+        num_workers: 2
         prefetch_factor: 10
   inference:
     samples:                                  # config for antibodies to generate
@@ -31,11 +31,11 @@ data:
 experiment:
   inference:
     output_dir: inference_outputs/
-    ckpt_path: ckpt/abfm/train_debug/2024-04-16_15-43-44/last.ckpt #weights/published.ckpt 
+    ckpt_path: ckpt/abfm/train1/2024-04-18_13-37-14/epoch=161-step=162000.ckpt #weights/published.ckpt 
     name: run_${now:%Y-%m-%d}_${now:%H-%M}
     num_gpus: ${experiment.num_devices}                   # TODO: handle this in code
   wandb:
-    name: inference_debug
+    name: inf_04_bestckpt
     project: abfm
     save_code: True
     tags: []
