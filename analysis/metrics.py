@@ -3,7 +3,48 @@ import mdtraj as md
 import numpy as np
 from openfold.np import residue_constants
 from tmtools import tm_align
+import os
 
+def blobb_check(pdb_path, rerun_check=True):
+    """
+    Run blobb_structure_check on a pdb file and and return problem counts.
+    """
+
+    dir = os.path.expanduser(os.path.dirname(pdb_path))
+    fname = os.path.basename(pdb_path).split('.')[0]
+    if rerun_check:
+        os.system(f"check_structure --check_only -i {pdb_path} backbone > {dir}/{fname}_strc_ck.out")
+
+    file = os.path.join(dir, f"{fname}_strc_ck.out")
+    if os.path.exists(file):
+        with open(file, 'r') as file:
+            lines = file.readlines()
+    else:
+        print(f"File {file} does not exist.")
+        return  False
+
+    missing_o = 0
+    bb_breaks = 0
+    bb_bad_links = 0
+    covalent_link_problems = False
+
+    for l in lines:
+        words = l.split()
+        if len(words) == 0:
+            continue
+        if words[0] == 'Structure':
+            pdb_path = words[1]
+        elif words[0] == 'Found':
+            if 'Residues with missing backbone atoms' in l:
+                missing_o = int(words[1])
+            elif 'Backbone breaks' in l:
+                bb_breaks = int(words[1])
+            elif 'Unexpected backbone links' in l:
+                bb_bad_links = True
+        elif words[0] == 'Consecutive':
+            covalent_link_problems = True
+    
+    return  missing_o, bb_breaks, bb_bad_links, covalent_link_problems
 
 def calc_tm_score(pos_1, pos_2, seq_1, seq_2):
     # https://en.wikipedia.org/wiki/Template_modeling_score
