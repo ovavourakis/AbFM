@@ -275,7 +275,7 @@ class Interpolant:
             t_1 = t_2
 
         # NOTE: WARNING !!! ======================================================
-        # I don't think this final step is not necessary for FM, just diffusion.
+        # I don't think this final step is necessary for FM, just diffusion.
         # ========================================================================
 
         # # We only integrated to min_t, so need to make a final step

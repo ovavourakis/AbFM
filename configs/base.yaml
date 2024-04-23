@@ -65,11 +65,12 @@ interpolant:
   self_condition: ${model.edge_features.self_condition}
   rots:
     train_schedule: linear                  # 'linear' or 'exp' (NOTE: however, differential by-component loss normalisation for rots and trans with different t not implemented -> FlowModule.model_step())
-    sample_schedule: exp                    # 'linear' or 'exp'
+    sample_schedule: linear #exp                    # 'linear' or 'exp'
     exp_rate: 10
   trans:
     train_schedule: linear                  # 'linear' or 'exp' (NOTE: however, differential by-component loss normalisation for rots and trans with different t not implemented -> FlowModule.model_step())
     sample_schedule: linear                 # TODO: only 'linear' implemented; non-linear euler step for translations not implemented -> Interpolant._trans_euler_step()
+    exp_rate: 10dj
   sampling:
     num_timesteps: 100
 

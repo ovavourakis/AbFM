@@ -31,11 +31,11 @@ data:
 experiment:
   inference:
     output_dir: inference_outputs/
-    ckpt_path: ckpt/abfm/train1/2024-04-18_13-37-14/epoch=161-step=162000.ckpt #weights/published.ckpt 
+    ckpt_path: ckpt/abfm/train1/2024-04-18_10-46-03/epoch=151-step=152000.ckpt #weights/published.ckpt 
     name: run_${now:%Y-%m-%d}_${now:%H-%M}
     num_gpus: ${experiment.num_devices}                   # TODO: handle this in code
   wandb:
-    name: inf_04_bestckpt
+    name: linrot_inf_04
     project: abfm
     save_code: True
     tags: []

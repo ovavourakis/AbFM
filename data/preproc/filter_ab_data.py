@@ -84,6 +84,8 @@ if __name__ == '__main__':
 
     print(f'\n{len(df)} entries remaining\n')
 
+    # TODO: add structure checks here
+
     cols_to_keep = ['oas_id', 'pdb_path', 'seqlen', 'cluster_ids', 'split', 'full_seq', 'locus_heavy', 'locus_light',
                     'fwr1_h', 'cdr1_h', 'fwr2_h', 'cdr2_h', 'fwr3_h', 'cdr3_h', 'fwr4_h',
                     'fwr1_l', 'cdr1_l', 'fwr2_l', 'cdr2_l', 'fwr3_l', 'cdr3_l', 'fwr4_l',
