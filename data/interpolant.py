@@ -278,20 +278,21 @@ class Interpolant:
         # I don't think this final step is necessary for FM, just diffusion.
         # ========================================================================
 
-        # # We only integrated to min_t, so need to make a final step
-        # t_1 = ts[-1]
-        # trans_t_1, rotmats_t_1 = prot_traj[-1]
-        # batch['trans_t'] = trans_t_1
-        # batch['rotmats_t'] = rotmats_t_1
-        # batch['t'] = torch.ones((num_batch, 1), device=self._device) * t_1
-        # with torch.no_grad():
-        #     model_out = model(batch)
-        # pred_trans_1 = model_out['pred_trans']
-        # pred_rotmats_1 = model_out['pred_rotmats']
-        # clean_traj.append(
-        #     (pred_trans_1.detach().cpu(), pred_rotmats_1.detach().cpu())
-        # )
-        # prot_traj.append((pred_trans_1, pred_rotmats_1))
+        # We integrated to 1, but all we have is a projection from 1-eps to 1.
+        # now want to do one final predictions of x1 | x1_proj
+        t_1 = ts[-1]
+        trans_t_1, rotmats_t_1 = prot_traj[-1]
+        batch['trans_t'] = trans_t_1
+        batch['rotmats_t'] = rotmats_t_1
+        batch['t'] = torch.ones((num_batch, 1), device=self._device) * t_1
+        with torch.no_grad():
+            model_out = model(batch)
+        pred_trans_1 = model_out['pred_trans']
+        pred_rotmats_1 = model_out['pred_rotmats']
+        clean_traj.append(
+            (pred_trans_1.detach().cpu(), pred_rotmats_1.detach().cpu())
+        )
+        prot_traj.append((pred_trans_1, pred_rotmats_1))
 
         # Convert trajectories to atom37.
         atom37_traj = all_atom.transrot_to_atom37(prot_traj, res_mask)

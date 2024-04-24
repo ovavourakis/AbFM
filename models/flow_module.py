@@ -165,6 +165,10 @@ class FlowModule(LightningModule):
         pred_pair_dists = pred_pair_dists * flat_loss_mask[..., None]
         pair_dist_mask = flat_loss_mask[..., None] * flat_res_mask[:, None, :]
 
+        # No loss on anything >6A
+        proximity_mask = gt_pair_dists < 6
+        pair_dist_mask  = pair_dist_mask * proximity_mask
+
         dist_mat_loss = torch.sum(
             (gt_pair_dists - pred_pair_dists)**2 * pair_dist_mask,
             dim=(1, 2))
