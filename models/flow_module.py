@@ -289,7 +289,7 @@ class FlowModule(LightningModule):
 
     def training_step(self, batch: Any, stage: int):
         step_start_time = time.time()
-        struc_batch, _ = batch # only use structure batch during training
+        struc_batch = batch # we only have structures (no generations) during training
 
         train_loss, num_batch = self.struc_step(struc_batch, stage='train')
 
@@ -324,6 +324,9 @@ class FlowModule(LightningModule):
         on a joint batch of known structures and antibody parameters to generate with.
         Logs everything appropriately.
         """
+
+        # TODO: fix this ---------------------------------------
+
         struc_batch, len_batch = batch
         len_struc_batch, len_len_batch = 0, 0
         loss = None

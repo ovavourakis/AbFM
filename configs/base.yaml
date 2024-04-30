@@ -2,7 +2,7 @@ data:
   module:                                   # config for data module
     inference_only_mode: False
     loaders:
-        num_workers: 2                      # per dataloader (one dataloader per GPU, train, val and test)                                    # TODO: depends on number of GPUs
+        num_workers: 1                      # per dataloader (one dataloader per GPU, train, val and test)                                    # TODO: depends on number of GPUs
         prefetch_factor: 10
   dataset:
     pdbs:

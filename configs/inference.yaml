@@ -21,7 +21,7 @@ data:
       length_step: 1
       length_list: null                       # explicit list of lengths at which to generate
       overwrite: False
-    bsampler:
+    bsampler: # NO LONGER NEEDED IN INFERENCE
       seed: 123
       # num_batches_per_epoch_per_gpu: 90     # set close to samples_per_length*num_lengths/num_gpus
       num_struc_samples: null
