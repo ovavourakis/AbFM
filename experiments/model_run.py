@@ -77,14 +77,13 @@ class ModelRun:
         if isinstance(self.logger.experiment.config, wandb.sdk.wandb_config.Config):
             self.logger.experiment.config.update(flat_cfg)
 
-        devices = GPUtil.getAvailable(order='memory', 
-                                      limit = 8)[:self._exp_cfg.num_devices]
+        devices = GPUtil.getAvailable(order='memory', limit=self._exp_cfg.num_devices)
         log.info(f"Using devices: {devices}")
         trainer = Trainer(
             **self._exp_cfg.trainer,
             callbacks=callbacks,
             logger=self.logger,
-            use_distributed_sampler=False,  # parallelism handled by CombinedDatasetBatchSampler internally
+            use_distributed_sampler=True,  # parallelism handled by CombinedDatasetBatchSampler internally
             enable_progress_bar=True,
             enable_model_summary=True,
             devices=devices,
@@ -97,13 +96,12 @@ class ModelRun:
 
     def test(self):
         self.setup_log_and_debug()
-        devices = GPUtil.getAvailable(
-            order='memory', limit = 8)[:self._exp_cfg.num_devices]
+        devices = GPUtil.getAvailable(order='memory', limit=self._exp_cfg.num_devices)
         log.info(f"Using devices: {devices}")
         trainer = Trainer(
             **self._exp_cfg.trainer,
             logger=self.logger,
-            use_distributed_sampler=False,  # parallelism handled by CombinedDatasetBatchSampler internally
+            use_distributed_sampler=True,  # parallelism handled by CombinedDatasetBatchSampler internally
             enable_progress_bar=True,
             enable_model_summary=True,
             devices=devices,
@@ -123,13 +121,12 @@ class ModelRun:
             OmegaConf.save(config=self._cfg, f=f)
         log.info(f'Saved config and samples to {self._exp_cfg.inference.output_dir}')
 
-        devices = GPUtil.getAvailable(
-            order='memory', limit = 8)[:self._exp_cfg.inference.num_gpus]
+        devices = GPUtil.getAvailable(order='memory', limit=self._exp_cfg.num_devices)
         log.info(f"Using devices: {devices}")
         trainer = Trainer(
             **self._exp_cfg.trainer,
             logger=self.logger,
-            use_distributed_sampler=False,  # parallelism handled by CombinedDatasetBatchSampler internally
+            use_distributed_sampler=True,  # parallelism handled by CombinedDatasetBatchSampler internally
             enable_progress_bar=True,
             enable_model_summary=True,
             devices=devices,
