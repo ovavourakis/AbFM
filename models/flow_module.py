@@ -289,8 +289,9 @@ class FlowModule(LightningModule):
 
     def training_step(self, batch: Any, stage: int):
         step_start_time = time.time()
-        struc_batch = batch # we only have structures (no generations) during training
-
+        
+        # we should only have structures (no generations) during training
+        struc_batch, _ = self.split_batch_types(batch)
         train_loss, num_batch = self.struc_step(struc_batch, stage='train')
 
         step_time = time.time() - step_start_time
@@ -318,25 +319,33 @@ class FlowModule(LightningModule):
         self.interpolant.set_device(f'cuda:{torch.cuda.current_device()}')
         return self.interpolant.sample(len_batch, self.model)
 
+    def split_batch_types(self, batch: Any):
+        if 'struc' in batch and 'gen' in batch: # from CombinedLoader
+            struc_batch, len_batch = batch['struc'], batch['gen']
+        elif 'sample_id' in batch: # just generation parameters
+            struc_batch, len_batch = None, batch
+        elif 'rotmats_1' in batch: # just structures
+            struc_batch, len_batch = batch, None
+
+        return struc_batch, len_batch
+
     def struc_and_sample_step(self, batch: Any, batch_idx: int, stage='valid'):
         """
         Performs a training-like loss computation followed by sample generation
         on a joint batch of known structures and antibody parameters to generate with.
         Logs everything appropriately.
         """
+        struc_batch, len_batch = self.split_batch_types(batch)
 
-        # TODO: fix this ---------------------------------------
-
-        struc_batch, len_batch = batch
         len_struc_batch, len_len_batch = 0, 0
         loss = None
 
         # training-like loss computation
-        if struc_batch != []:
+        if struc_batch is not None:
             loss, len_struc_batch = self.struc_step(struc_batch, stage=stage)
 
         # generation-based evaluation
-        if len_batch != []:
+        if len_batch is not None:
             samples, projections_traj, _, res_idx = self.sample_step(len_batch)
 
             # TODO: implement sensible metrics to evaluate antibody-likeness or protein-likeness
@@ -438,9 +447,9 @@ class FlowModule(LightningModule):
     # TODO: may want to modify so that supports multiple samples in parallel
     #       -> would require changes to interpolant.sample() 
     def predict_step(self, batch, batch_idx: int):
-        _, len_batch = batch # ignore any structure batch during inference
 
-        assert len_batch != [], 'No samples to predict on.'
+        _, len_batch = self.split_batch_types(batch)
+        assert len_batch is not None, 'No samples to predict on.'
         
         # read off some constants
         len_h, len_l = len_batch['len_h'], len_batch['len_l']
