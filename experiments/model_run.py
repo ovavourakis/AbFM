@@ -81,9 +81,10 @@ class ModelRun:
         log.info(f"Using devices: {devices}")
         trainer = Trainer(
             **self._exp_cfg.trainer,
+            # num_sanity_val_steps=0,
             callbacks=callbacks,
             logger=self.logger,
-            use_distributed_sampler=True,  # parallelism handled by CombinedDatasetBatchSampler internally
+            use_distributed_sampler=False,  # parallelism handled by CombinedDatasetBatchSampler internally
             enable_progress_bar=True,
             enable_model_summary=True,
             devices=devices,
@@ -100,8 +101,9 @@ class ModelRun:
         log.info(f"Using devices: {devices}")
         trainer = Trainer(
             **self._exp_cfg.trainer,
+            # num_sanity_val_steps=0,
             logger=self.logger,
-            use_distributed_sampler=True,  # parallelism handled by CombinedDatasetBatchSampler internally
+            use_distributed_sampler=False,  # parallelism handled by CombinedDatasetBatchSampler internally
             enable_progress_bar=True,
             enable_model_summary=True,
             devices=devices,
@@ -125,8 +127,9 @@ class ModelRun:
         log.info(f"Using devices: {devices}")
         trainer = Trainer(
             **self._exp_cfg.trainer,
+            num_sanity_val_steps=0,
             logger=self.logger,
-            use_distributed_sampler=True,  # parallelism handled by CombinedDatasetBatchSampler internally
+            use_distributed_sampler=True,
             enable_progress_bar=True,
             enable_model_summary=True,
             devices=devices,

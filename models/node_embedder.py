@@ -24,20 +24,14 @@ class NodeEmbedder(nn.Module):
         return timestep_emb * mask.unsqueeze(-1)
 
     def forward(self, timesteps, mask, pos):
-        b, num_res, device = mask.shape[0], mask.shape[1], mask.device
-
-        # [b, n_res]
-        # pos = pos.to(dtype=torch.float32).to(device)[None]
-        pos = pos.to(dtype=torch.float32).to(device)
-
-        # [b, n_res, c_pos_emb]
+        # mask: [batch, n_res]
+        # pos: [batch, n_res]
+        pos = pos.to(dtype=torch.float32).to(mask.device)
+        # [batch, n_res, c_pos_emb]
         pos_emb = get_index_embedding(pos, self.c_pos_emb, max_len=2056)
-
-        pos_emb = pos_emb.repeat([b, 1, 1])
         pos_emb = pos_emb * mask.unsqueeze(-1)
 
-        # [b, n_res, c_timestep_emb]
         input_feats = [pos_emb]
-        # timesteps are between 0 and 1. Convert to integers.
         input_feats.append(self.embed_t(timesteps, mask))
+
         return self.linear(torch.cat(input_feats, dim=-1))

@@ -6,7 +6,7 @@ data:
   module:
     inference_only_mode: True
     loaders:
-        num_workers: 2
+        num_workers: 1
         prefetch_factor: 10
   inference:
     samples:                                  # config for antibodies to generate
@@ -21,17 +21,10 @@ data:
       length_step: 1
       length_list: null                       # explicit list of lengths at which to generate
       overwrite: False
-    bsampler: # NO LONGER NEEDED IN INFERENCE
-      seed: 123
-      # num_batches_per_epoch_per_gpu: 90     # set close to samples_per_length*num_lengths/num_gpus
-      num_struc_samples: null
-      max_batch_size: 1                                   # TODO: currently sample() only handles batches of size one
-      max_num_res_squared: 500_000          # true_batch_size = min(max_batch_size, max_num_res_squared // seq_len^2 + 1)
-
 experiment:
   inference:
     output_dir: inference_outputs/
-    ckpt_path: ckpt/abfm/train1/2024-04-18_10-46-03/epoch=151-step=152000.ckpt #weights/published.ckpt 
+    ckpt_path: weights/published.ckpt 
     name: run_${now:%Y-%m-%d}_${now:%H-%M}
     num_gpus: ${experiment.num_devices}                   # TODO: handle this in code
   wandb:

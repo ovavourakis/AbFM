@@ -14,7 +14,7 @@ from torch.utils.data import Dataset, DataLoader, BatchSampler
 from torch.utils.data.distributed import dist, DistributedSampler
 
 from pytorch_lightning import LightningDataModule
-from pytorch_lightning.trainer.supporters import CombinedLoader
+from pytorch_lightning.utilities.combined_loader import CombinedLoader
 
 from data import utils as du
 from openfold.data import data_transforms
@@ -77,7 +77,7 @@ class PdbDataset(Dataset):
     def __getitem__(self, idx):
         # return one structure from pdb csv
         csv_row = self.pdb_csv.iloc[idx]
-        chain_feats = self._process_csv_row(csv_row['processed_path'].iloc[0])
+        chain_feats = self._process_csv_row(csv_row['processed_path'])#.iloc[0])
         chain_feats['csv_idx'] = torch.ones(1, dtype=torch.long) * idx
         return chain_feats
     
@@ -148,19 +148,23 @@ class DistributedPdbBatchSampler(DistributedSampler):
                        seed: int = 0, 
                        drop_last: bool = False
         ) -> None:
-        super().__init__(self, dataset, num_replicas, rank, shuffle,
-                         seed, drop_last)
+        super().__init__(dataset, num_replicas=num_replicas, rank=rank, shuffle=shuffle,
+                         seed=seed, drop_last=drop_last)
         self._log = logging.getLogger(__name__)
         
         self.cfg = bsampler_cfg
         self.batch_size = self.cfg.batch_size
 
-        self.batches = self.make_batch_list()
+        self.make_batches_for_epoch_and_replica() # creates self.batches = [[idx1, idx2, ...], [idxN, idxM, ...], ...]
         self._log.info(f'Created dataloader rank {self.rank+1} out of {self.num_replicas}.\n\
                          Contains {len(self.batches)} batches of size {self.batch_size}.')
 
     def make_batches_for_epoch_and_replica(self):
-        # AS IN super().__iter__() ===================================================================
+        # start from complete dataset (train, val or test)
+        full_dataset = self.dataset.pdb_csv
+        full_dataset['index'] = list(range(len(full_dataset))) # needed later
+    
+        # shuffle pdb indices, if specified
         if self.shuffle:
             # deterministically shuffle based on epoch and seed
             g = torch.Generator()
@@ -168,39 +172,22 @@ class DistributedPdbBatchSampler(DistributedSampler):
             indices = torch.randperm(len(self.dataset), generator=g).tolist()  # type: ignore[arg-type]
         else:
             indices = list(range(len(self.dataset)))  # type: ignore[arg-type]
-
-        if not self.drop_last:
-            # add extra samples to make it evenly divisible
-            padding_size = self.total_size - len(indices)
-            if padding_size <= len(indices):
-                indices += indices[:padding_size]
-            else:
-                indices += (indices * math.ceil(padding_size / len(indices)))[:padding_size]
-        else:
-            # remove tail of data to make it evenly divisible.
-            indices = indices[:self.total_size]
-        assert len(indices) == self.total_size
-        # ==============================================================================================
-
-        # additionally subsample pdbs if specified
+        # also subsample pdb indices if specified
         if self.cfg.num_struc_samples is not None:
             indices = indices[:self.cfg.num_struc_samples]
 
-        # how many structures to be divided across all replicas
-        len_shared_indices = len(indices) # important later
-
-        # subsample every nth element data for current replica (and epoch)
-        indices = indices[self.rank::self.num_replicas]
-        replica_dataset = self.dataset.iloc[indices]
+        # apply shuffling and subsampling
+        shuffled_dataset = full_dataset.iloc[indices]
 
         # create length-homogenous batches of equal size batch_size
         batches = []
-        for seq_len, len_df in replica_dataset.groupby('modeled_seq_len'):
+        for seq_len, len_df in shuffled_dataset.groupby('modeled_seq_len'):
             
             # num of *complete* batches for *this* sequence-length
             # this will drop some structures in the incomplete last batch 
             # (for this epoch)
             num_batches = math.floor(len(len_df) / self.batch_size)
+
             for i in range(num_batches):
                 batch_df = len_df.iloc[i*self.batch_size:(i+1)*self.batch_size]
                 batch_indices = batch_df['index'].tolist()
@@ -209,46 +196,34 @@ class DistributedPdbBatchSampler(DistributedSampler):
         # shuffle batches to mix lengths
         new_order = torch.randperm(len(batches), generator=g).tolist()
         batches = [batches[i] for i in new_order]
-
-        return batches, len_shared_indices
-
-    def make_batch_list(self):
-
-        batches, len_shared_indices = self.make_batches_for_epoch_and_replica()
-
-        """
-        Because the length composition of the underlying fraction of the dataset
-        on each replica differs randomly, the number of length-homogenous batches
-        that each replica returns differs, too.
-
-        This makes the epoch length undefined and can also lead to bugs, see e.g.
-        https://github.com/Lightning-AI/lightning/issues/10947
-
-        We therefore repeat batches until all replicas have equally many batches.
-        We choose the target number of batches so that an epoch covers the entire
-        dataset just over once (a few batches repeated), but this is arbitrary so 
-        long as the number chosen is \geq the actual number of batches on this 
-        replica.
-        """
-
-        target_num_batches = math.ceil(len_shared_indices / self.num_replicas / self.batch_size)
-        assert target_num_batches >= len(batches)
-
+        total_num_batches = len(batches)
+        
+        # make sure the number of batches is divisible by num_replicas
         num_augments = -1
-        while len(batches) < target_num_batches:
-            batches.extend(batches)
-            num_augments += 1
+        while total_num_batches % self.num_replicas != 0:
+            if not self.drop_last:
+                total_num_batches += 1
+                num_augments += 1
+            else:
+                total_num_batches -= 1
+                num_augments += 1
             if num_augments > 1000:
                 raise ValueError('Exceeded number of augmentations.')
-        if len(batches) >= target_num_batches:
-            batches = batches[:target_num_batches]
+        if total_num_batches >= len(batches):
+            padding_size = total_num_batches - len(batches)
+            batches += batches[:padding_size]
+        else:
+            batches = batches[:total_num_batches]
+        assert len(batches) == total_num_batches, f'len(batches)={len(batches)} != total_num_batches={total_num_batches}'
         
-        self.batches = batches
+        # distribute batches across replicas by subsampling
+        # every nth batch for current replica (and epoch)
+        replica_batches = batches[self.rank::self.num_replicas]  
+        self.batches = replica_batches
 
     def __iter__(self) -> Iterator[T_co]:
-
         if self.epoch > 0:
-            self.make_batch_list()
+            self.make_batches_for_epoch_and_replica()
         self.epoch += 1
         return iter(self.batches)
 
@@ -278,26 +253,25 @@ class DataModule(LightningDataModule):
             self.train_pdbs = PdbDataset(pdb_csv=pdb_csv[pdb_csv.split == 'train'])
             self._log.info(f'{len(self.train_pdbs)} TRAINING pdbs.')
             # val split
-            valid_pdbs, valid_gens = None, None
+            self.valid_pdbs, self.valid_gens = None, None
             if self.data_cfg.dataset.valid.use_pdbs:
                 valid_pdbs = pdb_csv[pdb_csv.split == 'valid']
+                self.valid_pdbs = PdbDataset(pdb_csv=valid_pdbs)
+                self._log.info(f'{len(self.valid_pdbs)} VALIDATION pdbs; will sub-sample {self.data_cfg.dataset.valid.bsampler.num_struc_samples} per validation run.')
             if self.data_cfg.dataset.valid.generate:
                 valid_gens = self.data_cfg.dataset.valid.samples
-            self.valid_pdbs = PdbDataset(pdb_csv=valid_pdbs)
-            self.valid_gens = LengthDataset(samples_cfg=valid_gens)
-            self._log.info(f'{len(self.valid_pdbs)} VALIDATION pdbs; will sub-sample {self.data_cfg.dataset.valid.bsampler.num_struc_samples} per validation run.')
-            self._log.info(f'Will also generate {len(self.valid_gens)} samples per validation run.')
+                self.valid_gens = LengthDataset(samples_cfg=valid_gens)
+                self._log.info(f'Will also generate {len(self.valid_gens)} samples per validation run.')
             # test split
-            test_pdbs, test_gens = None, None
+            self.test_pdbs, self.test_gens = None, None
             if self.data_cfg.dataset.test.use_pdbs:
                 test_pdbs = pdb_csv[pdb_csv.split == 'test']
+                self.test_pdbs = PdbDataset(pdb_csv=test_pdbs)
+                self._log.info(f'{len(self.test_pdbs)} TESTING pdbs; will sub-sample {self.data_cfg.dataset.test.bsampler.num_struc_samples} per test run.')
             if self.data_cfg.dataset.test.generate:
                 test_gens = self.data_cfg.dataset.test.samples
-            self.test_pdbs = PdbDataset(pdb_csv=test_pdbs)
-            self.test_gens = LengthDataset(samples_cfg=test_gens)
-
-            self._log.info(f'{len(self.test_pdbs)} TESTING pdbs; will sub-sample {self.data_cfg.dataset.test.bsampler.num_struc_samples} per test run.')
-            self._log.info(f'Will also generate {len(self.test_gens)} samples per test run.')
+                self.test_gens = LengthDataset(samples_cfg=test_gens)
+                self._log.info(f'Will also generate {len(self.test_gens)} samples per test run.')
 
     def get_dataloader(self, type, rank=None, num_replicas=None):
         

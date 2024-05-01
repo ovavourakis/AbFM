@@ -12,7 +12,7 @@ data:
       subset: null                          # take 1st k instances from dataset that fit the seq-length criteria (null = all)
     train:
       bsampler:                             # config for batch sampler (of pdb structures)
-        batch_size: 10                      # choose small, so that loose few structures through incomplete-batch omission
+        batch_size: 10                      # choose small, so that loose few structures (and total lengths) through incomplete-batch omission each epoch
         num_struc_samples: null             # null: train on all structures in train set; else subsample top k (before splitting across replicas)
     valid:
       use_pdbs: True                        # run validation on known structures
@@ -49,7 +49,6 @@ data:
         overwrite: False
       bsampler:                             # config for batch sampler (only applies to known pdb structrues, not generations)
         batch_size: 10                      # choose small, so that loose few structures through incomplete-batch omission
-        num_struc_samples: 100
         num_struc_samples: null
 
 interpolant:
@@ -146,7 +145,7 @@ experiment:                       # config for ModelRun
     check_val_every_n_epoch: 2
     accumulate_grad_batches: 2    # accumulate gradient over k * num_GPUs batches
   checkpointer:
-    dirpath: ckpt/${experiment.wandb.project}/${experiment.wandb.name}/${now:%Y-%m-%d}_${now:%H-%M-%S}
+    dirpath: ckpt/${experiment.wandb.project}/${experiment.wandb.name}/2024-05-01_12-58-58 #${now:%Y-%m-%d}_${now:%H-%M-%S}
     save_last: True
     save_top_k: 3
     monitor: valid/loss                                                                                                         # TODO: we want to monitor AB like-ness of *generations*, too
