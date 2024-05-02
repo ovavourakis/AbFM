@@ -4,6 +4,32 @@ import numpy as np
 from openfold.np import residue_constants
 from tmtools import tm_align
 import os
+import Bio.PDB
+
+def calculate_phi_psi_angles(structure):
+    # takes a  Bio.PDB.PDBParser().get_structure(...) as input
+    chain_1_angles_all_models = []
+    chain_2_angles_all_models = []
+    for model in structure:
+        chain_1_angles = []
+        chain_2_angles = []
+        for i, chain in enumerate(model):
+            
+            polypeptides = Bio.PDB.PPBuilder().build_peptides(chain)
+            if len(polypeptides) != 1:
+                print(f'Likely disconnected chain {str(chain.id)}! Skipping ...')
+                continue
+
+            for poly in polypeptides:
+                fps_l = poly.get_phi_psi_list()
+                if i == 0:  # First chain in the model
+                    chain_1_angles.extend(fps_l)
+                elif i == 1:  # Second chain in the model
+                    chain_2_angles.extend(fps_l)
+        chain_1_angles_all_models.extend(chain_1_angles)
+        chain_2_angles_all_models.extend(chain_2_angles)
+
+    return chain_1_angles_all_models, chain_2_angles_all_models
 
 def blobb_check(pdb_path, rerun_check=True):
     """

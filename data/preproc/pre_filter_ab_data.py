@@ -11,7 +11,7 @@ Sets up files to be used in pre-processing PDBs (process_ab_pdb_files.py).
 * eliminate sequences with missing PDBs
 
 Usage:
-python filter_ab_data.py
+python pre_filter_ab_data.py
 """
 import pandas as pd
 import os
@@ -27,7 +27,7 @@ col_drop_filters = ['_aa_', '_alignment_', 'junction', 'cdr', 'fwr', 'fwk', 'fwl
 all_metadata_csv = "/vols/opig/users/vavourakis/data/OAS_models/OAS_paired_all.csv"
 splits_csv = "/vols/opig/users/vavourakis/data/oas_splits.csv"
 strucs_dir = "/vols/opig/users/vavourakis/data/OAS_models/structures"
-out_filtered_csv = "/vols/opig/users/vavourakis/data/OAS_models/OAS_paired_filtered.csv"
+out_filtered_csv = "/vols/opig/users/vavourakis/data/OAS_models/OAS_paired_prefiltered.csv"
 
 def process_row(x):
     return ANARCIs_to_sequence(x.ANARCI_numbering_heavy, x.ANARCI_numbering_light)
