@@ -127,7 +127,7 @@ class ModelRun:
         log.info(f"Using devices: {devices}")
         trainer = Trainer(
             **self._exp_cfg.trainer,
-            num_sanity_val_steps=0,
+            # num_sanity_val_steps=0,
             logger=self.logger,
             use_distributed_sampler=True,
             enable_progress_bar=True,

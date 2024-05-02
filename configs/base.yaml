@@ -52,7 +52,7 @@ data:
         num_struc_samples: null
 
 interpolant:
-  min_t: 1e-2
+  min_t: 1e-3
   self_condition: ${model.edge_features.self_condition}
   rots:
     train_schedule: linear                  # 'linear' or 'exp' (NOTE: however, differential by-component loss normalisation for rots and trans with different t not implemented -> FlowModule.model_step())
@@ -99,38 +99,38 @@ experiment:                       # config for ModelRun
   training:
     loss: tot_loss                # in {"tot_loss", "bb_atom_loss", "trans_loss", "dist_mat_loss", "auxiliary_loss", "rots_vf_loss", "se3_vf_loss"}
     translation_loss_weight: 2.0
-    rotation_loss_weights: 1.0
+    rotation_loss_weights: 0.3
     aux_loss_weight: 1.0          # in relation to rototrans-losses considered together
-    aux_loss_t_pass: 0.75         # use auxiliary losses from t in [k,1]; 0<k<1
+    aux_loss_t_pass: 0.5         # use auxiliary losses from t in [k,1]; 0<k<1
     t_normalize_clip: 0.9         # clip loss normaliser 1/(1-min(t,0.9))
     bb_atom_scale: 0.1            # convert coordinates from Angstrom to nm
     trans_scale: 0.1              # convert coordinates from Angstrom to nm
     min_plddt_mask: null          # NOTE: filter implemented, but our pre-processing does not read it out of our structures, so would have to re-work that first
   validation:
-    loss: tot_loss                # in {"tot_loss", "bb_atom_loss", "trans_loss", "dist_mat_loss", "auxiliary_loss", "rots_vf_loss", "se3_vf_loss"}
-    translation_loss_weight: 2.0
-    rotation_loss_weights: 1.0
-    aux_loss_weight: 1.0          # in relation to rototrans-losses considered together
-    aux_loss_t_pass: 0.75         # use auxiliary losses from t in [0,k]; k<1
-    t_normalize_clip: 0.9         # clip loss normaliser 1/(1-t) to [1/(0.1), 1/1]
-    bb_atom_scale: 0.1            # convert coordinates from Angstrom to nm
-    trans_scale: 0.1              # convert coordinates from Angstrom to nm
-    min_plddt_mask: null          # NOTE: filter implemented, but our pre-processing does not read it out of our structures, so would have to re-work that first
+    loss: ${experiment.training.loss}
+    translation_loss_weight: ${experiment.training.translation_loss_weight}
+    rotation_loss_weights: ${experiment.training.rotation_loss_weights}
+    aux_loss_weight: ${experiment.training.aux_loss_weight}
+    aux_loss_t_pass: ${experiment.training.aux_loss_t_pass}
+    t_normalize_clip: ${experiment.training.t_normalize_clip}
+    bb_atom_scale: ${experiment.training.bb_atom_scale}
+    trans_scale: ${experiment.training.trans_scale}
+    min_plddt_mask: ${experiment.training.min_plddt_mask}
   testing:
     ckpt_name : last.ckpt         # located in checkpointer.dirpath
-    loss: tot_loss                # in {"tot_loss", "bb_atom_loss", "trans_loss", "dist_mat_loss", "auxiliary_loss", "rots_vf_loss", "se3_vf_loss"}
-    translation_loss_weight: 2.0
-    rotation_loss_weights: 1.0
-    aux_loss_weight: 1.0          # in relation to rototrans-losses considered together
-    aux_loss_t_pass: 0.75         # use auxiliary losses from t in [0,k]; k<1
-    t_normalize_clip: 0.9         # clip loss normaliser 1/(1-t) to [1/(0.1), 1/1]
-    bb_atom_scale: 0.1            # convert coordinates from Angstrom to nm
-    trans_scale: 0.1              # convert coordinates from Angstrom to nm
-    min_plddt_mask: null          # NOTE: filter implemented, but our pre-processing does not read it out of our structures, so would have to re-work that first
+    loss: ${experiment.training.loss}
+    translation_loss_weight: ${experiment.training.translation_loss_weight}
+    rotation_loss_weights: ${experiment.training.rotation_loss_weights}
+    aux_loss_weight: ${experiment.training.aux_loss_weight}
+    aux_loss_t_pass: ${experiment.training.aux_loss_t_pass}
+    t_normalize_clip: ${experiment.training.t_normalize_clip}
+    bb_atom_scale: ${experiment.training.bb_atom_scale}
+    trans_scale: ${experiment.training.trans_scale}
+    min_plddt_mask: ${experiment.training.min_plddt_mask}
   optimizer:
     lr: 0.00002 # 0.0001          # reduced for fine-tuning
   wandb:
-    name: new_dl_debug
+    name: phoenix
     project: abfm
     save_code: True
     tags: []
@@ -145,7 +145,7 @@ experiment:                       # config for ModelRun
     check_val_every_n_epoch: 2
     accumulate_grad_batches: 2    # accumulate gradient over k * num_GPUs batches
   checkpointer:
-    dirpath: ckpt/${experiment.wandb.project}/${experiment.wandb.name}/2024-05-01_12-58-58 #${now:%Y-%m-%d}_${now:%H-%M-%S}
+    dirpath: ckpt/${experiment.wandb.project}/${experiment.wandb.name}/${now:%Y-%m-%d}_${now:%H-%M-%S}
     save_last: True
     save_top_k: 3
     monitor: valid/loss                                                                                                         # TODO: we want to monitor AB like-ness of *generations*, too
