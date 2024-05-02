@@ -1,14 +1,16 @@
 import os
 import multiprocessing as mp
 import matplotlib.pyplot as plt
+import pandas as pd
 
 from metrics import blobb_check
 
 num_processes = 8
-pdb_dir = "/data/localhost/not-backed-up/nvme00/vavourakis/codebase/AbFM/pwcutoff_inference"
+pdb_dir = "/vols/opig/users/vavourakis/generations/ftnl_auxloss_lastquarter_inference"
 all_file_paths = [os.path.join(root, file) for root, dirs, files in os.walk(pdb_dir) for file in files if file == "sample.pdb"]
 
 print(pdb_dir)
+print('\n')
 
 # check the structures for chain breaks
 with mp.Pool(processes=num_processes) as pool:
@@ -36,12 +38,7 @@ for metric_name, metric_values in [("missing_o", missing_o), ("bb_breaks", bb_br
     metric_std = (sum((i - metric_mean) ** 2 for i in metric_values) / len(metric_values)) ** 0.5
     print(f"Distribution #{metric_name}: \t\t {metric_mean:.2f} +/- {metric_std:.2f}")
 
-
-
-
-import pandas as pd
-
-# Convert results to DataFrame for easier manipulation
+# distributions across sequence length
 df = pd.DataFrame({
     "missing_o": missing_o,
     "bb_breaks": bb_breaks,
@@ -49,31 +46,38 @@ df = pd.DataFrame({
     "covalent_link_problems": covalent_link_problems,
     "total_residues": total_residues
 })
-
-# Convert bb_bad_links to numeric for percentage calculation
 df["bb_bad_links"] = df["bb_bad_links"].astype(int)
 
-# Define bins for total_residues
-bins = [0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, max(df["total_residues"])+1]
-labels = ['0-100', '101-200', '201-300', '301-400', '401-500', '501-600', '601-700', '701-800', '801-900', '901-1000', '1001+']
+bins = [min(df["total_residues"])-1, 220, 230, 240, 250, max(df["total_residues"])+1]
+labels = ["<220", "220-230", "230-240", "240-250", ">250"]
 df['residue_bins'] = pd.cut(df['total_residues'], bins=bins, labels=labels, right=False)
 
-# Calculate percentage of bb_bad_links in each bin
-bb_bad_links_percentage = df.groupby('residue_bins')['bb_bad_links'].mean() * 100
+bb_crosslinks_percentage = df.groupby('residue_bins')['bb_bad_links'].mean() * 100
+mean_bb_breaks = df.groupby('residue_bins')['bb_breaks'].mean()
+bb_breaks_percentage = df.groupby('residue_bins')['bb_breaks'].apply(lambda x: (sum(x > 0) / len(x)) * 100)
 
-print("\nPercentage of structures with unexpected backbone links by total residues:")
-print(bb_bad_links_percentage)
+print("\npercent structures with backbone crosslinks by total length:")
+print(bb_crosslinks_percentage)
 
-# Plotting
-plt.figure(figsize=(10, 5))
+print("\n percent structures with backbone breaks by total length:")
+print(bb_breaks_percentage)
 
-# Scatter plot for bb_breaks vs total_residues
-plt.subplot(1, 2, 1)
-plt.scatter(df["total_residues"], df["bb_breaks"], alpha=0.5)
-plt.title("BB Breaks vs Total Residues")
-plt.xlabel("Total Residues")
-plt.ylabel("BB Breaks")
+print("\nnumber of backbone breaks by total length:")
+print(mean_bb_breaks)
 
+# plot
+fig, ax = plt.subplots(1, 3, figsize=(18, 6))
+fig.suptitle('Synoptic QC')  # Added title
+bb_crosslinks_percentage.plot(kind='bar', ax=ax[0], color='blue', alpha=0.7)
+ax[0].set_ylim(0, 70)
+bb_breaks_percentage.plot(kind='bar', ax=ax[1], color='green', alpha=0.7)
+ax[1].set_ylim(0, 70)
+mean_bb_breaks.plot(kind='line', ax=ax[2], color='red', alpha=0.7)
+ax[0].set_ylabel("% of structures with backbone crosslinks")
+ax[1].set_ylabel("% of structures with backbone breaks")
+ax[2].set_ylabel("mean #backbone breaks")
+for axis in ax:
+    axis.tick_params(axis='x', rotation=0)
 plt.tight_layout()
-plt.savefig()
+plt.savefig("distro.png")
 
