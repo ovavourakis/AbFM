@@ -32,6 +32,8 @@ def blobb_check(pdb_path, rerun_check=True):
         words = l.split()
         if len(words) == 0:
             continue
+        if words[0] == 'Num.' and words[1] == 'residues:':
+            total_residues = int(words[2])
         if words[0] == 'Structure':
             pdb_path = words[1]
         elif words[0] == 'Found':
@@ -44,7 +46,7 @@ def blobb_check(pdb_path, rerun_check=True):
         elif words[0] == 'Consecutive':
             covalent_link_problems = True
     
-    return  missing_o, bb_breaks, bb_bad_links, covalent_link_problems
+    return  missing_o, bb_breaks, bb_bad_links, covalent_link_problems, total_residues
 
 def calc_tm_score(pos_1, pos_2, seq_1, seq_2):
     # https://en.wikipedia.org/wiki/Template_modeling_score
