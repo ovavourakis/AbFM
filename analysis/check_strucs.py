@@ -1,3 +1,14 @@
+"""
+Uses blobb_structure_check 
+(https://biobb-structure-checking.readthedocs.io/en/latest/command_line_usage.html)
+to evaluate a set of structures for common problems such as 
+missing oxygens, backbone breaks, and backbone crosslinks.
+
+Prints some synoptic statistics and outouts a plot of the 
+distribution of these problems across different total lengths
+in the dataset.
+"""
+
 import os
 import multiprocessing as mp
 import matplotlib.pyplot as plt
