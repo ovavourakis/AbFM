@@ -40,11 +40,12 @@ def plot_ramachandran(phi_psi_angles, title, plot_type="kde_fill", ax=None, colo
 def overlay_ramachandran(data, reference, title='Title', color='b', 
                          labels=['Data', 'Reference'], fname='ramachandran.png'):
     ax = plot_ramachandran(reference, title, plot_type="kde_fill", color=color)
-    ax = plot_ramachandran(data, title, plot_type="kde_line", color=color, ax=ax)
+    ax = plot_ramachandran(data, title, plot_type="kde_line", color="black", ax=ax)
 
     kde_legendpatch = mpatches.Patch(color=color, label=labels[1], alpha=0.5)
-    kde_legendline = mlines.Line2D([], [], color=color, label=labels[0])
+    kde_legendline = mlines.Line2D([], [], color='black', label=labels[0])
     ax.legend(handles=[kde_legendpatch, kde_legendline], loc='lower right')
+    plt.tight_layout()
     plt.savefig(fname, dpi=300)
 
 def create_full_prot(
