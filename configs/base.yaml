@@ -2,7 +2,7 @@ data:
   module:                                   # config for data module
     inference_only_mode: False
     loaders:                                # config for individual data loader processes
-        num_workers: 1                      # per dataloader (one per GPU, train, val and test) - should provide appropriate #CPUs to match
+        num_workers: 2                      # per dataloader (one per GPU, train, val and test) - should provide appropriate #CPUs to match
         prefetch_factor: 10
   dataset:
     pdbs:
@@ -130,7 +130,7 @@ experiment:                       # config for ModelRun
   optimizer:
     lr: 0.00002 # 0.0001          # reduced for fine-tuning
   wandb:
-    name: phoenix
+    name: phoenix1
     project: abfm
     save_code: True
     tags: []

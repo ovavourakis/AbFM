@@ -181,17 +181,19 @@ class FlowModule(LightningModule):
         auxiliary_loss *= cfg.aux_loss_weight
 
         tot_loss = se3_vf_loss + auxiliary_loss
+
+        loss_dict = {
+                "bb_atom_loss": bb_atom_loss,
+                "trans_loss": trans_loss,
+                "dist_mat_loss": dist_mat_loss,
+                "auxiliary_loss": auxiliary_loss,
+                "rots_vf_loss": rots_vf_loss,
+                "se3_vf_loss": se3_vf_loss,
+                "tot_loss": tot_loss
+            }
         if torch.isnan(tot_loss).any():
-            raise ValueError('NaN loss encountered')
-        return {
-            "bb_atom_loss": bb_atom_loss,
-            "trans_loss": trans_loss,
-            "dist_mat_loss": dist_mat_loss,
-            "auxiliary_loss": auxiliary_loss,
-            "rots_vf_loss": rots_vf_loss,
-            "se3_vf_loss": se3_vf_loss,
-            "tot_loss": tot_loss
-        }
+            raise ValueError(f'NaN loss encountered in batch: {noisy_batch["file"]}. \n LOSS COMPONENTS: \n {loss_dict}')
+        return loss_dict
 
     def process_struc_batch(self, struc_batch, stage):
         assert stage in ['train', 'valid', 'test', 'sample'], f'Unknown stage {stage}.'

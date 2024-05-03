@@ -64,6 +64,7 @@ class PdbDataset(Dataset):
         res_idx = torch.cat([heavy_chain_res_idx, light_chain_res_idx], dim=0)
 
         return {
+            'file': processed_file_path,
             'aatype': chain_feats['aatype'],
             'res_idx': res_idx, # array; starting at 1 (VH) and 1001 (VL), preserving gaps
             'rotmats_1': rotmats_1,
