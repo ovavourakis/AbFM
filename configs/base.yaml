@@ -137,12 +137,12 @@ experiment:                       # config for ModelRun
   trainer:
     overfit_batches: 0            # set to non-zero to sanity-check model capacity
     min_epochs: 1                 # prevents early stopping
-    max_epochs: 200
+    max_epochs: 50 #200
     accelerator: gpu
     log_every_n_steps: 1
     deterministic: False          # allow PyTorch to use non-deterministic algorithms
     strategy: ddp
-    check_val_every_n_epoch: 2
+    check_val_every_n_epoch: 1
     accumulate_grad_batches: 2    # accumulate gradient over k * num_GPUs batches
   checkpointer:
     dirpath: ckpt/${experiment.wandb.project}/${experiment.wandb.name}/${now:%Y-%m-%d}_${now:%H-%M-%S}

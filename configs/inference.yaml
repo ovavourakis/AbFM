@@ -24,11 +24,11 @@ data:
 experiment:
   inference:
     output_dir: inference_outputs/
-    ckpt_path: weights/published.ckpt 
+    ckpt_path: /vols/opig/users/vavourakis/epoch=3-step=23648.ckpt #weights/published.ckpt 
     name: run_${now:%Y-%m-%d}_${now:%H-%M}
     num_gpus: ${experiment.num_devices}                   # TODO: handle this in code
   wandb:
-    name: linrot_inf_04
+    name: phoenix1_inference
     project: abfm
     save_code: True
     tags: []
