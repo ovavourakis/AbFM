@@ -12,7 +12,7 @@ data:
       subset: null                          # take 1st k instances from dataset that fit the seq-length criteria (null = all)
     train:
       bsampler:                             # config for batch sampler (of pdb structures)
-        batch_size: 30                      # choose small, so that loose few structures (and total lengths) through incomplete-batch omission each epoch
+        batch_size: 10                      # choose small, so that loose few structures (and total lengths) through incomplete-batch omission each epoch
         num_struc_samples: null             # null: train on all structures in train set; else subsample top k (before splitting across replicas)
     valid:
       use_pdbs: True                        # run validation on known structures
@@ -129,7 +129,7 @@ experiment:                       # config for ModelRun
   optimizer:
     lr: 0.00002 # 0.0001          # reduced for fine-tuning
   wandb:
-    name: phoenix1_debug_bs30
+    name: phoenix1_debug
     project: abfm
     save_code: True
     tags: []
