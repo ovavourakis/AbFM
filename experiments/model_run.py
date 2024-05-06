@@ -81,6 +81,7 @@ class ModelRun:
         log.info(f"Using devices: {devices}")
         trainer = Trainer(
             **self._exp_cfg.trainer,
+            # detect_anomaly=True,             # TODO: remove once debugged
             # num_sanity_val_steps=0,
             callbacks=callbacks,
             logger=self.logger,
@@ -88,7 +89,6 @@ class ModelRun:
             enable_progress_bar=True,
             enable_model_summary=True,
             devices=devices,
-            detect_anomaly=True             # TODO: remove once debugged
         )
         trainer.fit(
             model=self._model,
