@@ -92,7 +92,6 @@ model:
 experiment:                       # config for ModelRun
   debug: False
   num_devices: 2                  # max number of GPUs to use, if available
-  sync_dist: True                 # sync val and test metrics across GPUs                                                                                   # TODO: depends on previous
   warm_start_cfg_override: True   # if True, will override this config with the one from the checkpoint
   warm_start: null                # path to directory that contains *config* of checkpoint to warm-start from
   warm_start_weights: weights/published.ckpt # fine-tune starting from these weigths

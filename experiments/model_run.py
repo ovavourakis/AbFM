@@ -88,6 +88,7 @@ class ModelRun:
             enable_progress_bar=True,
             enable_model_summary=True,
             devices=devices,
+            detect_anomaly=True             # TODO: remove once debugged
         )
         trainer.fit(
             model=self._model,

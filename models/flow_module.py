@@ -59,8 +59,23 @@ class FlowModule(LightningModule):
             on_epoch=False,
             prog_bar=True,
             batch_size=None,
-            sync_dist=False,
-            rank_zero_only=True
+
+            # ! WARNING ============================================================
+            # The original values here (also in multiflow) were:
+            #       sync_dist=False, rank_zero_only=True
+            # The latter is possible because @rank_zero_only decorator in WandbLogger implements guard 
+            # equivalent to: https://lightning.ai/docs/pytorch/stable/visualize/logging_advanced.html#rank-zero-only
+
+            # I was previously passing
+            #       sync_dist=True, rank_zero_only=True (circumventing the check)
+            # probably very bad.
+
+            # The defaults for both are False in Lightning Docs; Wandb doesn't suggest changing them.
+            # https://docs.wandb.ai/guides/integrations/lightning#how-to-use-multiple-gpus-with-lightning-and-wb
+
+            sync_dist=False,        # whether to reduce metric across devices (adds communication overhead)
+            rank_zero_only=False    # logged only from rank 0
+            # =======================================================================
         ):
         if sync_dist and rank_zero_only:
             raise ValueError('Unable to sync dist when rank_zero_only=True')
@@ -71,7 +86,7 @@ class FlowModule(LightningModule):
             on_epoch=on_epoch,
             prog_bar=prog_bar,
             batch_size=batch_size,
-            sync_dist=self.sync_dist,
+            sync_dist=sync_dist,
             rank_zero_only=rank_zero_only
         )
 
@@ -310,8 +325,7 @@ class FlowModule(LightningModule):
                  epoch_time,
                  on_step=False,
                  on_epoch=True,
-                 prog_bar=False,
-                 sync_dist=self.sync_dist,
+                 prog_bar=False
         )
         self._epoch_start_time = time.time()
 

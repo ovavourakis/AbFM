@@ -11,3 +11,4 @@ def train_val(cfg: DictConfig):
 
 if __name__ == "__main__":
     train_val()
+    wandb.finish()
