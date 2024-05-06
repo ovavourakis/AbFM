@@ -32,7 +32,6 @@ class FlowModule(LightningModule):
 
         self._interpolant_cfg = cfg.interpolant
         self._exp_cfg = cfg.experiment
-        # self.sync_dist = cfg.experiment.sync_dist         # TODO: removed everywhere, remove from here
 
         self._valid_sample_write_dir = self._exp_cfg.checkpointer.dirpath
         self._test_sample_write_dir = os.path.join(self._exp_cfg.checkpointer.dirpath, 'test')
