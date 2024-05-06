@@ -46,10 +46,25 @@ class FlowModule(LightningModule):
         self.save_hyperparameters() # saves to self.hparams (also in model checkpoints)
     
     def configure_optimizers(self):
-        return torch.optim.AdamW(
-            params=self.model.parameters(),
-            **self._exp_cfg.optimizer
+        optimizer = torch.optim.AdamW(params=self.model.parameters(),
+                                        **self._exp_cfg.optimizer
         )
+
+        # TODO: add this to the config
+        lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
+                                        factor=0.1,
+                                        patience=3
+        )
+        lr_scheduler_config = {
+            'scheduler': lr_scheduler,
+            'monitor': 'valid/loss',  
+            'interval': 'step',
+            'frequency': self._exp_cfg.trainer.val_check_interval,
+            'strict': False,
+        }
+        return {'optimizer': optimizer,
+                'lr_scheduler': lr_scheduler_config
+        }
     
     def _log_scalar(
             self,
