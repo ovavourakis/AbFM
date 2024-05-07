@@ -225,8 +225,8 @@ class FlowModule(LightningModule):
                 with open(os.path.join(pickle_dir, f'{item_name}.pkl'), 'wb') as file:
                     pickle.dump(item, file)
 
-            raise ValueError(f'NaN loss encountered in batch: {noisy_batch["file"]}. \n LOSS COMPONENTS: \n {loss_dict} \n 
-                             LOSS MASK: \n {loss_mask} \n NOISY BATCH: \n {noisy_batch} \n MODEL OUTPUT: \n {model_output} \n 
+            raise ValueError(f'NaN loss encountered in batch: {noisy_batch["file"]}. \n LOSS COMPONENTS: \n {loss_dict} \n \
+                             LOSS MASK: \n {loss_mask} \n NOISY BATCH: \n {noisy_batch} \n MODEL OUTPUT: \n {model_output} \n \
                              NORM_SCALE: \n {norm_scale} \n PRED_ROTS_VF: \n {pred_rots_vf} \n PAIR_DIST_MASK: \n {pair_dist_mask} \n')
         return loss_dict
 

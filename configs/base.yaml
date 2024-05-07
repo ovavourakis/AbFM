@@ -31,7 +31,7 @@ data:
         overwrite: False
       bsampler:                             # config for batch sampler (only applies to known pdb structrues, not generations)
         batch_size: 10                      # choose small, so that loose few structures through incomplete-batch omission
-        num_struc_samples: 100
+        num_struc_samples: 1000
     test:
       use_pdbs: True                        # run test on known structures
       generate: False                       # also generate some de-novo structures and run tests on them (currently undefined how to do that)
@@ -95,13 +95,13 @@ experiment:                       # config for ModelRun
   warm_start_cfg_override: True   # if True, will override this config with the one from the checkpoint
   warm_start: null                # path to directory that contains *config* of checkpoint to warm-start from
   warm_start_weights: weights/published.ckpt # fine-tune starting from these weigths
-  crash_dir: /vols/opig/users/vavourakis/crash_dir                 # path to save batch info to upon encountering NaN loss
+  crash_dir: /vols/opig/users/vavourakis/crash_dir                 # path to save batch info upon encountering NaN loss
   training:
     loss: tot_loss                # in {"tot_loss", "bb_atom_loss", "trans_loss", "dist_mat_loss", "auxiliary_loss", "rots_vf_loss", "se3_vf_loss"}
     translation_loss_weight: 2.0
     rotation_loss_weights: 0.3
     aux_loss_weight: 1.0          # in relation to rototrans-losses considered together
-    aux_loss_t_pass: 0.5         # use auxiliary losses from t in [k,1]; 0<k<1
+    aux_loss_t_pass: 0.5          # use auxiliary losses from t in [k,1]; 0<k<1
     t_normalize_clip: 0.9         # clip loss normaliser 1/(1-min(t,0.9))
     bb_atom_scale: 0.1            # convert coordinates from Angstrom to nm
     trans_scale: 0.1              # convert coordinates from Angstrom to nm
@@ -130,7 +130,7 @@ experiment:                       # config for ModelRun
   optimizer:
     lr: 1e-4
   wandb:
-    name: phoenix1_debug
+    name: phoenix1_04_long
     project: abfm
     save_code: True
     tags: []
@@ -144,7 +144,7 @@ experiment:                       # config for ModelRun
     strategy: ddp
     # check_val_every_n_epoch: 1      # NOTE: disabled to allow more frequent checkpointing via callback ModelCheckpoint (next section)
     val_check_interval: 1000      # validate every 1000 training steps
-    accumulate_grad_batches: 2    # accumulate gradient over k * num_GPUs batches
+    accumulate_grad_batches: 6    # accumulate gradient over k * num_GPUs batches
   checkpointer:
     dirpath: ckpt/${experiment.wandb.project}/${experiment.wandb.name}/${now:%Y-%m-%d}_${now:%H-%M-%S}
     save_last: True
