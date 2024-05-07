@@ -198,6 +198,7 @@ class DistributedPdbBatchSampler(DistributedSampler):
         new_order = torch.randperm(len(batches), generator=g).tolist()
         batches = [batches[i] for i in new_order]
         total_num_batches = len(batches)
+        assert total_num_batches > 0, 'No batches created.'
         
         # make sure the number of batches is divisible by num_replicas
         num_augments = -1
@@ -221,6 +222,9 @@ class DistributedPdbBatchSampler(DistributedSampler):
         # every nth batch for current replica (and epoch)
         replica_batches = batches[self.rank::self.num_replicas]  
         self.batches = replica_batches
+        assert len(self.batches) > 0, 'No batches created.'
+        for batch in self.batches:
+            assert len(batch) == self.batch_size, f"Batch length is {len(batch)}, but expected length is {self.batch_size}."
 
     def __iter__(self) -> Iterator[T_co]:
         if self.epoch > 0:
@@ -319,6 +323,7 @@ class DataModule(LightningDataModule):
         # both types present
         if pdbs is not None and gens is not None:
             iterables = {'struc' : pdb_loader, 'gen' : gen_loader}
+            print('Both structures and generation paramters passed. Starting with CombinedLoader.')
             return CombinedLoader(iterables, 'max_size')
         # just generation parameters
         elif pdbs is None and gens is not None:

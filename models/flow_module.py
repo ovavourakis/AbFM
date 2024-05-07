@@ -33,7 +33,6 @@ class FlowModule(LightningModule):
 
         self._interpolant_cfg = cfg.interpolant
         self._exp_cfg = cfg.experiment
-        # self.sync_dist = cfg.experiment.sync_dist         # TODO: removed everywhere, remove from here
 
         self._valid_sample_write_dir = self._exp_cfg.checkpointer.dirpath
         self._test_sample_write_dir = os.path.join(self._exp_cfg.checkpointer.dirpath, 'test')
@@ -67,15 +66,13 @@ class FlowModule(LightningModule):
             # The latter is possible because @rank_zero_only decorator in WandbLogger implements guard 
             # equivalent to: https://lightning.ai/docs/pytorch/stable/visualize/logging_advanced.html#rank-zero-only
 
-            # I was previously passing
-            #       sync_dist=True, rank_zero_only=True (circumventing the check)
-            # probably very bad.
-
             # The defaults for both are False in Lightning Docs; Wandb doesn't suggest changing them.
             # https://docs.wandb.ai/guides/integrations/lightning#how-to-use-multiple-gpus-with-lightning-and-wb
 
-            sync_dist=False,        # whether to reduce metric across devices (adds communication overhead)
-            rank_zero_only=False    # logged only from rank 0
+            # Passing sync_dist=True (and rank_zero_only=False) seems to cause issues with stalling on multi-GPU runs.
+
+            sync_dist=False,       # whether to reduce metric across devices (adds communication overhead)
+            rank_zero_only=True    # logged only from rank 0
             # =======================================================================
         ):
         if sync_dist and rank_zero_only:
