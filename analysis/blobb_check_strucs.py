@@ -7,31 +7,45 @@ missing oxygens, backbone breaks, and backbone crosslinks.
 Prints some synoptic statistics and outouts a plot of the 
 distribution of these problems across different total lengths
 in the dataset.
+
+Usage: 
+python blobb_check_strucs.py --num_processes 8 --pdb_dir /vols/opig/users/vavourakis/generations/ftnl_auxloss_lastquarter_inference --rerun_check
 """
 
-import os
+import os, argparse
+import pandas as pd
 import multiprocessing as mp
 import matplotlib.pyplot as plt
-import pandas as pd
 
 from metrics import blobb_check
 
-num_processes = 8
-pdb_dir = "/vols/opig/users/vavourakis/generations/ftnl_auxloss_lastquarter_inference"
-all_file_paths = [os.path.join(root, file) for root, dirs, files in os.walk(pdb_dir) for file in files if file == "sample.pdb"]
+parser = argparse.ArgumentParser(description='Process PDB files with blobb_structure_check.')
+parser.add_argument('--num_processes', type=int, default=8, help='Number of processes to use.')
+parser.add_argument('--pdb_dir', type=str, default=None, help='Directory containing generated structures.')
+parser.add_argument('--rerun_check', action='store_true', help='Flag to rerun checks on PDB files (somewhat time-consuming).')
 
+args = parser.parse_args()
+num_processes = args.num_processes
+pdb_dir = args.pdb_dir
+if pdb_dir is None:
+    raise ValueError("The --pdb_dir argument must be specified and cannot be None.")
+rerun_check = args.rerun_check
+
+out_dir = pdb_dir
+
+all_file_paths = [os.path.join(root, file) for root, dirs, files in os.walk(pdb_dir) for file in files if file == "sample.pdb"]
 print(pdb_dir)
 print('\n')
 
 # check the structures for chain breaks
 with mp.Pool(processes=num_processes) as pool:
-    results = pool.map(blobb_check, all_file_paths)
+    results = pool.starmap(blobb_check, [(path, rerun_check) for path in all_file_paths])
     missing_o, bb_breaks, bb_bad_links, covalent_link_problems, total_residues = zip(*results)
 
 metrics = [("missing oxygens", missing_o), 
            ("backbone breaks", bb_breaks), 
            ("covalent link problems", covalent_link_problems),
-           ("backbone cross-links", bb_bad_links), 
+           ("backbone cross-links", bb_bad_links)
 ]
 
 # percentage of structures with problems
@@ -67,28 +81,42 @@ bb_crosslinks_percentage = df.groupby('residue_bins')['bb_bad_links'].mean() * 1
 mean_bb_breaks = df.groupby('residue_bins')['bb_breaks'].mean()
 bb_breaks_percentage = df.groupby('residue_bins')['bb_breaks'].apply(lambda x: (sum(x > 0) / len(x)) * 100)
 
+# CLI output
 print("\npercent structures with backbone crosslinks by total length:")
 print(bb_crosslinks_percentage)
-
 print("\n percent structures with backbone breaks by total length:")
 print(bb_breaks_percentage)
-
 print("\nnumber of backbone breaks by total length:")
 print(mean_bb_breaks)
 
 # plot
-fig, ax = plt.subplots(1, 3, figsize=(18, 6))
-fig.suptitle('Synoptic QC')  # Added title
-bb_crosslinks_percentage.plot(kind='bar', ax=ax[0], color='blue', alpha=0.7)
-ax[0].set_ylim(0, 70)
-bb_breaks_percentage.plot(kind='bar', ax=ax[1], color='green', alpha=0.7)
-ax[1].set_ylim(0, 70)
-mean_bb_breaks.plot(kind='line', ax=ax[2], color='red', alpha=0.7)
-ax[0].set_ylabel("% of structures with backbone crosslinks")
-ax[1].set_ylabel("% of structures with backbone breaks")
-ax[2].set_ylabel("mean #backbone breaks")
-for axis in ax:
-    axis.tick_params(axis='x', rotation=0)
-plt.tight_layout()
-plt.savefig("distro.png")
+fig, ax = plt.subplots(3, 1, figsize=(6, 12))
+fig.suptitle('Synoptic Structure QC', fontsize=16)
 
+ax[0].set_title("Prevalence of Backbone Crosslinks", fontsize=14)
+bb_crosslinks_percentage.plot(kind='bar', ax=ax[0], color='blue', alpha=0.7)
+ax[0].bar_label(ax[0].containers[0], fmt='%.0f', fontsize=12)
+ax[0].set_ylim(0, 100)
+ax[0].set_ylabel("structures with crosslinks (%)", fontsize=12)
+
+ax[1].set_title("Prevalence of Backbone Breaks", fontsize=14)
+bb_breaks_percentage.plot(kind='bar', ax=ax[1], color='green', alpha=0.7)
+ax[1].bar_label(ax[1].containers[0], fmt='%.0f', fontsize=12)
+ax[1].set_ylim(0, 100)
+ax[1].set_ylabel("structures with breaks (%)", fontsize=12)
+
+ax[2].set_title("Mean Backbone Breaks per Structure", fontsize=14)
+mean_bb_breaks.plot(kind='bar', ax=ax[2], color='red', alpha=0.7)
+ax[2].bar_label(ax[2].containers[0], fmt='%.2f', fontsize=12)
+ax[2].set_ylabel("number of backbone breaks", fontsize=12)
+max_value = mean_bb_breaks.max()
+ax[2].set_ylim(0, max_value * 1.1)
+
+for i in range(3):
+    ax[i].set_xlabel("total sequence length (AA)", fontsize=12)
+for axis in ax:
+    axis.tick_params(axis='x', rotation=0, labelsize=10)
+
+plt.tight_layout()
+plt.savefig(os.path.join(out_dir, "synoptic_qc.png"),
+            dpi=300)
