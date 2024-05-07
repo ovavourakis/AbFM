@@ -145,10 +145,11 @@ class DistributedPdbBatchSampler(DistributedSampler):
                        bsampler_cfg=None,
                        num_replicas: Optional[int] = None,
                        rank: Optional[int] = None, 
-                       shuffle: bool = True,
+                       shuffle: bool = False, #TODO: change back to True,
                        seed: int = 0, 
                        drop_last: bool = False
         ) -> None:
+    
         super().__init__(dataset, num_replicas=num_replicas, rank=rank, shuffle=shuffle,
                          seed=seed, drop_last=drop_last)
         self._log = logging.getLogger(__name__)
@@ -194,8 +195,10 @@ class DistributedPdbBatchSampler(DistributedSampler):
                 batch_indices = batch_df['index'].tolist()
                 batches.append(batch_indices)
 
-        # shuffle batches to mix lengths
-        new_order = torch.randperm(len(batches), generator=g).tolist()
+        if self.shuffle: # shuffle batches to mix lengths
+            new_order = torch.randperm(len(batches), generator=g).tolist()
+        else:
+            new_order = list(range(len(batches)))
         batches = [batches[i] for i in new_order]
         total_num_batches = len(batches)
         

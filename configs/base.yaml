@@ -127,27 +127,29 @@ experiment:                       # config for ModelRun
     trans_scale: ${experiment.training.trans_scale}
     min_plddt_mask: ${experiment.training.min_plddt_mask}
   optimizer:
-    lr: 0.00002 # 0.0001          # reduced for fine-tuning
+    lr: 0.0001 #0.001 #0.0002 # 0.00002 # 0.0001
+    # weight_decay: 0.001
   wandb:
-    name: phoenix1_debug
+    name: phoenix1_overfit
     project: abfm
     save_code: True
     tags: []
   trainer:
-    overfit_batches: 0            # set to non-zero to sanity-check model capacity
+    overfit_batches: 1            # set to non-zero to sanity-check model capacity
     min_epochs: 1                 # prevents early stopping
-    max_epochs: 50 #200
+    max_epochs: 10000 #200
     accelerator: gpu
     log_every_n_steps: 1
-    deterministic: False          # allow PyTorch to use non-deterministic algorithms
+    deterministic: True          # allow PyTorch to use non-deterministic algorithms
     strategy: ddp
-    # check_val_every_n_epoch: 1      # NOTE: disabled to allow more frequent checkpointing via callback ModelCheckpoint (next section)
-    val_check_interval: 1000      # validate every 1000 training steps
-    accumulate_grad_batches: 2    # accumulate gradient over k * num_GPUs batches
+    check_val_every_n_epoch: 1000      # NOTE: disabled to allow more frequent checkpointing via callback ModelCheckpoint (next section)
+    # val_check_interval: 0      # validate every 1000 training steps
+    accumulate_grad_batches: 1    # accumulate gradient over k * num_GPUs batches
   checkpointer:
     dirpath: ckpt/${experiment.wandb.project}/${experiment.wandb.name}/${now:%Y-%m-%d}_${now:%H-%M-%S}
     save_last: True
     save_top_k: 3
     monitor: valid/loss                                                                                                         # TODO: we want to monitor AB like-ness of *generations*, too
     mode: min
-    every_n_train_steps: 1000     # checkpoint more than once per epoch
+    # every_n_train_steps: 1000     # checkpoint more than once per epoch
+    every_n_epochs: 1000

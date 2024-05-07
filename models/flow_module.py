@@ -206,6 +206,9 @@ class FlowModule(LightningModule):
                 "se3_vf_loss": se3_vf_loss,
                 "tot_loss": tot_loss
             }
+
+        print(f'BATCH: {noisy_batch["file"]}')
+
         if torch.isnan(tot_loss).any():
             raise ValueError(f'NaN loss encountered in batch: {noisy_batch["file"]}. \n LOSS COMPONENTS: \n {loss_dict}')
         return loss_dict

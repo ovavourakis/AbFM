@@ -851,7 +851,12 @@ class BaseSampleSO3(nn.Module):
         Returns:
             torch.Tensor: Batch of rotation axes with dimensions [num_sigma x num_samples x 3].
         """
-        vectors = torch.randn(num_sigma, num_samples, 3, device=self.sigma_grid.device)
+        # TODO: remove this block and the generator below
+        torch.manual_seed(42)
+        torch.cuda.manual_seed(42)
+        rng = torch.Generator()
+
+        vectors = torch.randn(num_sigma, num_samples, 3, device=self.sigma_grid.device, generator=rng)
         vectors = vectors / torch.norm(vectors, dim=2, keepdim=True)
         return vectors
 
@@ -873,7 +878,12 @@ class BaseSampleSO3(nn.Module):
         cdf_tmp = self.cdf_igso3[sigma_indices, :]
 
         # Draw from uniform distribution.
-        p_uniform = torch.rand((*sigma_indices.shape, *[num_samples]), device=sigma_indices.device)
+        # TODO: remove this block and the generator below
+        torch.manual_seed(42)
+        torch.cuda.manual_seed(42)
+        rng = torch.Generator()
+
+        p_uniform = torch.rand((*sigma_indices.shape, *[num_samples]), device=sigma_indices.device, generator=rng)
 
         # Determine indices for CDF.
         idx_stop = torch.sum(cdf_tmp[..., None] < p_uniform[:, None, :], dim=1).long()

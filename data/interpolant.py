@@ -8,9 +8,15 @@ from data import utils as du
 from data import all_atom
 
 def _centered_gaussian(num_batch, num_res, device):
+    
+    # TODO: remove this block and remove the generator from below
+    torch.manual_seed(42)
+    torch.cuda.manual_seed(42)
+    rng = torch.Generator(device=device)
+
     # (num_res * xyz) gaussian noise for each protein
     # centered at exactly (0,0,0) per protein
-    noise = torch.randn(num_batch, num_res, 3, device=device)
+    noise = torch.randn(num_batch, num_res, 3, device=device, generator=rng)
     return noise - torch.mean(noise, dim=-2, keepdims=True)
 
 def _uniform_so3(num_batch, num_res, device):
@@ -58,16 +64,22 @@ class Interpolant:
     def sample_t(self, num_batch): 
        # theoretically in [0,1)
        # practically in [min_t, 1-min_t]
-       t = torch.rand(num_batch, device=self._device)
-       return t * (1 - 2*self._cfg.min_t) + self._cfg.min_t
+    #    t = torch.rand(num_batch, device=self._device)
+    #    return t * (1 - 2*self._cfg.min_t) + self._cfg.min_t
+
+        # TODO: revert this
+        return torch.ones((num_batch,), device=self._device) * 0.5
 
     def _corrupt_trans(self, trans_1, t, res_mask):
+        
         trans_nm_0 = _centered_gaussian(*res_mask.shape, self._device)
+
         trans_0 = trans_nm_0 * du.NM_TO_ANG_SCALE
         
         # Kabsch pre-align noise to data to remove global rotation from ODE
         # see section 2.2 of FrameFlow paper  
-        trans_0 = self._batch_ot(trans_0, trans_1, res_mask)
+        # TODO: reinstate
+        # trans_0 = self._batch_ot(trans_0, trans_1, res_mask)
         
         # linearly interpolate between t=1 (data) and t=t
         trans_t = (1 - t[..., None]) * trans_0 + t[..., None] * trans_1
@@ -76,7 +88,7 @@ class Interpolant:
     
     def _batch_ot(self, trans_0, trans_1, res_mask):
         # Kabsch pre-align noise to data to remove global rotation from ODE
-        # see section 2.2 of FrameFlow paper  
+        # see section 2.2 of FrameFlow paper
         num_batch, num_res = trans_0.shape[:2]
         noise_idx, gt_idx = torch.where(
             torch.ones(num_batch, num_batch))
