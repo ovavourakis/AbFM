@@ -52,7 +52,7 @@ data:
         num_struc_samples: null
 
 interpolant:
-  min_t: 1e-3
+  min_t: 1e-2
   self_condition: ${model.edge_features.self_condition}
   rots:
     train_schedule: linear                  # 'linear' or 'exp' (NOTE: however, differential by-component loss normalisation for rots and trans with different t not implemented -> FlowModule.model_step())
@@ -95,6 +95,7 @@ experiment:                       # config for ModelRun
   warm_start_cfg_override: True   # if True, will override this config with the one from the checkpoint
   warm_start: null                # path to directory that contains *config* of checkpoint to warm-start from
   warm_start_weights: weights/published.ckpt # fine-tune starting from these weigths
+  crash_dir: /vols/opig/users/vavourakis/crash_dir                 # path to save batch info to upon encountering NaN loss
   training:
     loss: tot_loss                # in {"tot_loss", "bb_atom_loss", "trans_loss", "dist_mat_loss", "auxiliary_loss", "rots_vf_loss", "se3_vf_loss"}
     translation_loss_weight: 2.0
@@ -127,7 +128,7 @@ experiment:                       # config for ModelRun
     trans_scale: ${experiment.training.trans_scale}
     min_plddt_mask: ${experiment.training.min_plddt_mask}
   optimizer:
-    lr: 0.00002 # 0.0001          # reduced for fine-tuning
+    lr: 1e-4
   wandb:
     name: phoenix1_debug
     project: abfm
@@ -136,7 +137,7 @@ experiment:                       # config for ModelRun
   trainer:
     overfit_batches: 0            # set to non-zero to sanity-check model capacity
     min_epochs: 1                 # prevents early stopping
-    max_epochs: 50 #200
+    max_epochs: 200 #200
     accelerator: gpu
     log_every_n_steps: 1
     deterministic: False          # allow PyTorch to use non-deterministic algorithms

@@ -3,6 +3,7 @@ import torch
 import time
 import os
 import random
+import pickle
 import wandb
 import numpy as np
 import pandas as pd
@@ -206,8 +207,27 @@ class FlowModule(LightningModule):
                 "se3_vf_loss": se3_vf_loss,
                 "tot_loss": tot_loss
             }
+        
         if torch.isnan(tot_loss).any():
-            raise ValueError(f'NaN loss encountered in batch: {noisy_batch["file"]}. \n LOSS COMPONENTS: \n {loss_dict}')
+            pickle_dir = self._exp_cfg.crash_dir
+            os.makedirs(pickle_dir, exist_ok=True)
+
+            items_to_pickle = [
+                ("loss_dict", loss_dict),
+                ("loss_mask", loss_mask),
+                ("noisy_batch", noisy_batch),
+                ("model_output", model_output),
+                ("norm_scale", norm_scale),
+                ("pred_rots_vf", pred_rots_vf),
+                ("pair_dist_mask", pair_dist_mask)
+            ]
+            for item_name, item in items_to_pickle:
+                with open(os.path.join(pickle_dir, f'{item_name}.pkl'), 'wb') as file:
+                    pickle.dump(item, file)
+
+            raise ValueError(f'NaN loss encountered in batch: {noisy_batch["file"]}. \n LOSS COMPONENTS: \n {loss_dict} \n 
+                             LOSS MASK: \n {loss_mask} \n NOISY BATCH: \n {noisy_batch} \n MODEL OUTPUT: \n {model_output} \n 
+                             NORM_SCALE: \n {norm_scale} \n PRED_ROTS_VF: \n {pred_rots_vf} \n PAIR_DIST_MASK: \n {pair_dist_mask} \n')
         return loss_dict
 
     def process_struc_batch(self, struc_batch, stage):
