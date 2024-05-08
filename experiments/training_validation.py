@@ -15,5 +15,5 @@ if __name__ == "__main__":
     finally:
         wandb.finish() 
         # should hopefully be called even upon SIGTERM
-        # but it can still take a long time to finish, so may need to increase SLURM timeouts
-        # to prevent SLURM freaking out and sending node into drain
+        # BUT wandb.finish() is known to sometimes be slow so SLURM's timeouts may be too short
+        # which may send the node into drain
