@@ -5,9 +5,12 @@ Plots densities for VH, VL and whole Fv.
 
 Relies on pre-computed phi-psi values for the reference set stored in 
 vh_angles_train_val_test.csv and vl_angles_train_val_test.csv.
+
+Usage:
+python plot_ramach.py --gen_dir /vols/opig/users/vavourakis/generations/new_dl_pre_crash_epoch3
 """
 
-import os, warnings
+import os, warnings, argparse
 import pandas as pd
 from tqdm.auto import tqdm
 
@@ -17,8 +20,15 @@ from Bio.PDB.PDBExceptions import PDBConstructionWarning
 from analysis.utils import overlay_ramachandran
 from analysis.metrics import calculate_phi_psi_angles
 
-gen_dir = "/vols/opig/users/vavourakis/generations/rblft_inference" # contains set of model generations to evaluate
-ref_dir = "/vols/opig/users/vavourakis/data/new_ab_processed"       # contains vh_angles_train_val_test.csv and vl_angles_train_val_test.csv
+parser = argparse.ArgumentParser(description='Process directories for Ramachandran plot generation.')
+parser.add_argument('--gen_dir', type=str, default=None, help='Directory containing set of model generations to evaluate.')
+parser.add_argument('--ref_dir', type=str, default="/vols/opig/users/vavourakis/data/new_ab_processed", help='Directory containing reference angle CSV files (vh_angles_train_val_test.csv and vl_angles_train_val_test.csv).')
+args = parser.parse_args()
+
+assert args.gen_dir is not None, "The --gen_dir argument must be specified and cannot be None."
+gen_dir = args.gen_dir
+ref_dir = args.ref_dir
+
 out_dir = gen_dir
 
 print("Loading reference data...")
