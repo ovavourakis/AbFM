@@ -9,6 +9,9 @@ import numpy as np
 import pandas as pd
 import logging
 from pytorch_lightning import LightningModule
+from pytorch_lightning.utilities import grad_norm
+from pytorch_lightning.loggers.wandb import WandbLogger
+
 from analysis import metrics 
 from analysis import utils as au
 from models.flow_model import FlowModel
@@ -19,8 +22,6 @@ from data import all_atom
 from data import so3_utils
 from data import residue_constants
 from experiments import utils as eu
-from pytorch_lightning.loggers.wandb import WandbLogger
-
 
 class FlowModule(LightningModule):
 
@@ -50,6 +51,11 @@ class FlowModule(LightningModule):
             params=self.model.parameters(),
             **self._exp_cfg.optimizer
         )
+
+    def on_before_optimizer_step(self, optimizer):
+        norms = grad_norm(self.model, norm_type=2)
+        self.log_dict(norms)
+
     
     def _log_scalar(
             self,
@@ -61,15 +67,15 @@ class FlowModule(LightningModule):
             batch_size=None,
 
             # ! WARNING ============================================================
-            # The original values here (also in multiflow) were:
+            # The original values here (also in multiflow) are:
             #       sync_dist=False, rank_zero_only=True
             # The latter is possible because @rank_zero_only decorator in WandbLogger implements guard 
             # equivalent to: https://lightning.ai/docs/pytorch/stable/visualize/logging_advanced.html#rank-zero-only
 
             # The defaults for both are False in Lightning Docs; Wandb doesn't suggest changing them.
             # https://docs.wandb.ai/guides/integrations/lightning#how-to-use-multiple-gpus-with-lightning-and-wb
-
-            # Passing sync_dist=True (and rank_zero_only=False) seems to cause issues with stalling on multi-GPU runs.
+            # However, passing sync_dist=True (and rank_zero_only=False) seems to cause issues with stalling 
+            # (possibly deadlocks) on multi-GPU runs. Both False was also problematic, both True doesn't make sense.
 
             sync_dist=False,       # whether to reduce metric across devices (adds communication overhead)
             rank_zero_only=True    # logged only from rank 0
@@ -135,6 +141,66 @@ class FlowModule(LightningModule):
                 model_output = self.model(noisy_batch)
         pred_trans_1 = model_output['pred_trans']
         pred_rotmats_1 = model_output['pred_rotmats']
+
+        # TODO: remove this block
+        min_pred_trans_1 = torch.min(pred_trans_1)
+        max_pred_trans_1 = torch.max(pred_trans_1)
+        min_pred_rotmats_1 = torch.min(pred_rotmats_1)
+        max_pred_rotmats_1 = torch.max(pred_rotmats_1)
+        self._print_logger.info(f"Min value in pred_trans_1: {min_pred_trans_1}, Max value in pred_trans_1: {max_pred_trans_1}")
+        self._print_logger.info(f"Min value in pred_rotmats_1: {min_pred_rotmats_1}, Max value in pred_rotmats_1: {max_pred_rotmats_1}")
+        if torch.isnan(pred_trans_1).any():
+            
+            pickle_dir = self._exp_cfg.crash_dir
+            os.makedirs(pickle_dir, exist_ok=True)
+
+            items_to_pickle = [
+                ("noisy_batch", noisy_batch),
+                ("model_output", model_output)
+            ]
+            for item_name, item in items_to_pickle:
+                with open(os.path.join(pickle_dir, f'{item_name}.pkl'), 'wb') as file:
+                    pickle.dump(item, file)
+
+            raise ValueError("pred_trans_1 contains NaN values.")
+        if torch.isinf(pred_trans_1).any():
+            pickle_dir = self._exp_cfg.crash_dir
+            os.makedirs(pickle_dir, exist_ok=True)
+
+            items_to_pickle = [
+                ("noisy_batch", noisy_batch),
+                ("model_output", model_output)
+            ]
+            for item_name, item in items_to_pickle:
+                with open(os.path.join(pickle_dir, f'{item_name}.pkl'), 'wb') as file:
+                    pickle.dump(item, file)
+
+            raise ValueError("pred_trans_1 contains Inf values.")
+        if torch.isnan(pred_rotmats_1).any():
+            pickle_dir = self._exp_cfg.crash_dir
+            os.makedirs(pickle_dir, exist_ok=True)
+
+            items_to_pickle = [
+                ("noisy_batch", noisy_batch),
+                ("model_output", model_output)
+            ]
+            for item_name, item in items_to_pickle:
+                with open(os.path.join(pickle_dir, f'{item_name}.pkl'), 'wb') as file:
+                    pickle.dump(item, file)
+            raise ValueError("pred_rotmats_1 contains NaN values.")
+        if torch.isinf(pred_rotmats_1).any():
+            pickle_dir = self._exp_cfg.crash_dir
+            os.makedirs(pickle_dir, exist_ok=True)
+
+            items_to_pickle = [
+                ("noisy_batch", noisy_batch),
+                ("model_output", model_output)
+            ]
+            for item_name, item in items_to_pickle:
+                with open(os.path.join(pickle_dir, f'{item_name}.pkl'), 'wb') as file:
+                    pickle.dump(item, file)
+            raise ValueError("pred_rotmats_1 contains Inf values.")
+
         pred_rots_vf = so3_utils.calc_rot_vf(rotmats_t, pred_rotmats_1)
 
         # Backbone atom loss
@@ -237,10 +303,22 @@ class FlowModule(LightningModule):
         # generate edge-rep self-conditioning distogram w/ 50% prob, if specified
         # always use it during validation, testing, and sampling (if specified)
         if self._interpolant_cfg.self_condition:
+            
             if stage in ['valid', 'test', 'sample'] or random.random() > 0.5:
                 with torch.no_grad():
                     model_sc = self.model(noisy_batch)
                     noisy_batch['trans_sc'] = model_sc['pred_trans']
+
+                # TODO: revert this
+                if torch.isnan(noisy_batch['trans_sc']).any():
+                    raise ValueError("Encountered NaNs in 'trans_sc' during processing. \n \
+                                    BATCH: {noisy_batch} \n")
+                if torch.isinf(noisy_batch['trans_sc']).any():
+                    raise ValueError("Encountered Infs in 'trans_sc' during processing. \n \
+                                    BATCH: {noisy_batch} \n")
+                min_value = torch.min(noisy_batch['trans_sc']).item()
+                max_value = torch.max(noisy_batch['trans_sc']).item()
+                self._print_logger.info(f"Self-conditioning tensor; min: {min_value}, max: {max_value}")
         
         # forward pass and per-item losses
         batch_losses = self.model_step(noisy_batch, stage=stage)

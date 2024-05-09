@@ -162,6 +162,9 @@ def rotvec_to_rotmat(rotation_vectors: torch.Tensor, tol: float = 1e-7) -> torch
 
 
 def rotmat_to_rotvec(rotation_matrices: torch.Tensor) -> torch.Tensor:
+
+    # TODO: remove all the checks
+
     """
     Convert a batch of rotation matrices to rotation vectors (logarithmic map from SO(3) to so(3)).
         // in other words: go from rotation-matrix representation to axis-angle representation //
@@ -202,8 +205,19 @@ def rotmat_to_rotvec(rotation_matrices: torch.Tensor) -> torch.Tensor:
     """
     # Get angles and sin/cos from rotation matrix.
     angles, angles_sin, _ = angle_from_rotmat(rotation_matrices)
+    assert not torch.isnan(angles).any(), "Angles contain NaN values."
+    assert not torch.isinf(angles).any(), "Angles contain Inf values."
+    assert not torch.isnan(angles_sin).any(), "Angles_sin contain NaN values."
+    assert not torch.isinf(angles_sin).any(), "Angles_sin contain Inf values."
+    
     # Compute skew matrix representation and extract so(3) vector components.
-    vector = skew_matrix_to_vector(rotation_matrices - rotation_matrices.transpose(-2, -1))
+    # vector = skew_matrix_to_vector(rotation_matrices - rotation_matrices.transpose(-2, -1))
+    diff = rotation_matrices - rotation_matrices.transpose(-2, -1)
+    assert not torch.isnan(diff).any(), "DIFF contains NaN values."
+    assert not torch.isinf(diff).any(), "DIFF contains Inf values."
+    vector = skew_matrix_to_vector(diff)
+    assert not torch.isnan(vector).any(), "Vector contains NaN values."
+    assert not torch.isinf(vector).any(), "Vector contains Inf values."
 
     # Three main cases for angle theta, which are captured
     # 1) Angle is 0 or close to zero -> use Taylor series for small values / return 0 vector.
@@ -223,17 +237,30 @@ def rotmat_to_rotvec(rotation_matrices: torch.Tensor) -> torch.Tensor:
         + 2.0 * angles_sin * mask_else  # Standard formula.
         + mask_pi  # Avoid zero division at angle == pi.
     )
+    assert not torch.isnan(denominator).any(), "Denominator contains NaN values."
+    assert not torch.isinf(denominator).any(), "Denominator contains Inf values."
+    assert not torch.isclose(denominator, torch.zeros_like(denominator)).any(), "Denominator contains zero values."
+    
     prefactor = numerator / denominator
+    assert not torch.isnan(prefactor).any() and not torch.isinf(prefactor).any(), "Prefactor contains NaN or Inf values."
+    
     vector = vector * prefactor[..., None]
+    assert not torch.isnan(vector).any() and not torch.isinf(vector).any(), "Vector after prefactor contains NaN or Inf values."
 
     # For angles close to pi, derive vectors from their outer product (ww' = 1 + R).
     id3 = _broadcast_identity(rotation_matrices)
+    assert not torch.isnan(id3).any() and not torch.isinf(id3).any(), "id3 contains NaN or Inf values."
+    
     skew_outer = (id3 + rotation_matrices) / 2.0
     # Ensure diagonal is >= 0 for square root (uses identity for masking).
+    assert not torch.isnan(skew_outer).any() and not torch.isinf(skew_outer).any(), "skew_outer contains NaN or Inf values."
+    
     skew_outer = skew_outer + (torch.relu(skew_outer) - skew_outer) * id3
+    assert not torch.isnan(skew_outer).any() and not torch.isinf(skew_outer).any(), "skew_outer after relu contains NaN or Inf values."
 
     # Get basic rotation vector as sqrt of diagonal (is unit vector).
     vector_pi = torch.sqrt(torch.diagonal(skew_outer, dim1=-2, dim2=-1))
+    assert not torch.isnan(vector_pi).any() and not torch.isinf(vector_pi).any(), "vector_pi contains NaN or Inf values."
 
     # Compute the signs of vector elements (up to a global phase).
     # Fist select indices for outer product slices with the largest norm.
@@ -248,6 +275,7 @@ def rotmat_to_rotvec(rotation_matrices: torch.Tensor) -> torch.Tensor:
 
     # Fill entries for angle == pi in rotation vector (basic vector has zero entries at this point).
     vector = vector + vector_pi * mask_pi[..., None]
+    assert not torch.isnan(vector).any() and not torch.isinf(vector).any(), "Final vector contains NaN or Inf values."
 
     return vector
 
@@ -492,7 +520,19 @@ def calc_rot_vf(mat_t: torch.Tensor, mat_1: torch.Tensor) -> torch.Tensor:
     Returns:
         Rotation vector representing the vector field.
     """
-    return rotmat_to_rotvec(rot_mult(rot_transpose(mat_t), mat_1))
+
+    # TODO: remove these check
+    if torch.isnan(mat_t).any() or torch.isinf(mat_t).any() or torch.isnan(mat_1).any() or torch.isinf(mat_1).any():
+        raise ValueError("Input matrices contain NaN or Inf values.")
+
+    mult = rot_mult(rot_transpose(mat_t), mat_1)
+
+    if torch.isnan(mult).any():
+        raise ValueError("MATMUL matrix contains NaN values.")
+    if torch.isinf(mult).any():
+        raise ValueError("MATMUL matrix contains Inf values.")
+
+    return rotmat_to_rotvec(mult)
 
 
 def geodesic_t(t: float, mat: torch.Tensor, base_mat: torch.Tensor, rot_vf=None) -> torch.Tensor:
