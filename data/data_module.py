@@ -54,7 +54,6 @@ class PdbDataset(Dataset):
         rotmats_1 = rigids_1.get_rots().get_rot_mats()
         trans_1 = rigids_1.get_trans()
         
-        # TODO: don't do this conversion here, do it whenever you pre-process the data
         res_idx = torch.tensor(processed_feats['residue_index'])
 
         # re-index residues starting at 1 (heavy chain) and 1001 (light chain), preserving gaps
@@ -62,6 +61,9 @@ class PdbDataset(Dataset):
         heavy_chain_res_idx = res_idx[:light_chain_start] - torch.min(res_idx[:light_chain_start]) + 1
         light_chain_res_idx = res_idx[light_chain_start:] - torch.min(res_idx[light_chain_start:]) + 1001
         res_idx = torch.cat([heavy_chain_res_idx, light_chain_res_idx], dim=0)
+
+        if torch.isnan(trans_1).any() or torch.isnan(rotmats_1).any():
+            raise ValueError(f'Found NaNs in {processed_file_path}')
 
         return {
             'file': processed_file_path,
@@ -74,7 +76,7 @@ class PdbDataset(Dataset):
 
     def __len__(self):
         return len(self.pdb_csv)
-
+    
     def __getitem__(self, idx):
         # return one structure from pdb csv
         csv_row = self.pdb_csv.iloc[idx]

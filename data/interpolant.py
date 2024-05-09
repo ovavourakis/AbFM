@@ -145,6 +145,8 @@ class Interpolant:
 
         # apply corruptions
         trans_t = self._corrupt_trans(trans_1, t, res_mask)
+        if torch.any(torch.isnan(trans_t)):
+            raise ValueError('NaN in trans_t during corruption.')
         noisy_batch['trans_t'] = trans_t
 
         # NOTE: WARNING !!! newly added !!! ========================
@@ -154,6 +156,8 @@ class Interpolant:
         # ==========================================================
 
         # rotmats_t = self._corrupt_rotmats(rotmats_1, t, res_mask)
+        if torch.any(torch.isnan(rotmats_t)):
+            raise ValueError('NaN in rotmats_t during corruption')
         noisy_batch['rotmats_t'] = rotmats_t
         return noisy_batch
     

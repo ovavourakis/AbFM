@@ -304,17 +304,35 @@ class FlowModule(LightningModule):
         # always use it during validation, testing, and sampling (if specified)
         if self._interpolant_cfg.self_condition:
             
-            if stage in ['valid', 'test', 'sample'] or random.random() > 0.5:
+            if stage in ['valid', 'test', 'sample'] or random.random() > 0.0:
                 with torch.no_grad():
                     model_sc = self.model(noisy_batch)
                     noisy_batch['trans_sc'] = model_sc['pred_trans']
 
                 # TODO: revert this
                 if torch.isnan(noisy_batch['trans_sc']).any():
-                    raise ValueError("Encountered NaNs in 'trans_sc' during processing. \n \
+                    
+                    pickle_dir = self._exp_cfg.crash_dir
+                    os.makedirs(pickle_dir, exist_ok=True)
+
+                    items_to_pickle = [("noisy_batch", noisy_batch)]
+                    for item_name, item in items_to_pickle:
+                        with open(os.path.join(pickle_dir, f'{item_name}.pkl'), 'wb') as file:
+                            pickle.dump(item, file)
+
+                    raise ValueError(f"Encountered NaNs in 'trans_sc' during processing. \n \
                                     BATCH: {noisy_batch} \n")
                 if torch.isinf(noisy_batch['trans_sc']).any():
-                    raise ValueError("Encountered Infs in 'trans_sc' during processing. \n \
+
+                    pickle_dir = self._exp_cfg.crash_dir
+                    os.makedirs(pickle_dir, exist_ok=True)
+
+                    items_to_pickle = [("noisy_batch", noisy_batch)]
+                    for item_name, item in items_to_pickle:
+                        with open(os.path.join(pickle_dir, f'{item_name}.pkl'), 'wb') as file:
+                            pickle.dump(item, file)
+
+                    raise ValueError(f"Encountered Infs in 'trans_sc' during processing. \n \
                                     BATCH: {noisy_batch} \n")
                 min_value = torch.min(noisy_batch['trans_sc']).item()
                 max_value = torch.max(noisy_batch['trans_sc']).item()
