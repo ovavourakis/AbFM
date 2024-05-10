@@ -14,7 +14,7 @@ from models.flow_module import FlowModule
 from experiments import utils as eu
 
 log = eu.get_pylogger(__name__) # multi-GPU-friendly python CLI logger
-torch.set_float32_matmul_precision('highest')
+torch.set_float32_matmul_precision('high')
 
 class ModelRun:
 

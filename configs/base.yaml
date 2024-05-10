@@ -95,7 +95,7 @@ experiment:                       # config for ModelRun
   warm_start_cfg_override: True   # if True, will override this config with the one from the checkpoint
   warm_start: null                # path to directory that contains *config* of checkpoint to warm-start from
   warm_start_weights: weights/published.ckpt # fine-tune starting from these weigths
-  crash_dir: /vols/opig/users/vavourakis/crash_dir_ph1_06_asserts                 # path to save batch info upon encountering NaN loss
+  crash_dir: local_crash_dir/                 # path to save batch info upon encountering NaN loss as well as every batch in between
   training:
     loss: tot_loss                # in {"tot_loss", "bb_atom_loss", "trans_loss", "dist_mat_loss", "auxiliary_loss", "rots_vf_loss", "se3_vf_loss"}
     translation_loss_weight: 2.0

@@ -55,7 +55,6 @@ class FlowModule(LightningModule):
     def on_before_optimizer_step(self, optimizer):
         norms = grad_norm(self.model, norm_type=2)
         self.log_dict(norms)
-
     
     def _log_scalar(
             self,
@@ -201,7 +200,29 @@ class FlowModule(LightningModule):
                     pickle.dump(item, file)
             raise ValueError("pred_rotmats_1 contains Inf values.")
 
+        # TODO: remove this block
+        pickle_dir = self._exp_cfg.crash_dir
+        os.makedirs(pickle_dir, exist_ok=True)
+
+        items_to_pickle = [
+            ("noisy_batch_regular", noisy_batch),
+            ("model_output_regular", model_output)
+        ]
+        for item_name, item in items_to_pickle:
+            with open(os.path.join(pickle_dir, f'{item_name}.pkl'), 'wb') as file:
+                pickle.dump(item, file)
+
         pred_rots_vf = so3_utils.calc_rot_vf(rotmats_t, pred_rotmats_1)
+
+        # TODO: remove this block
+        pickle_dir = self._exp_cfg.crash_dir
+        os.makedirs(pickle_dir, exist_ok=True)
+        items_to_pickle = [
+            ("pred_rots_vf_regular", pred_rots_vf)
+        ]
+        for item_name, item in items_to_pickle:
+            with open(os.path.join(pickle_dir, f'{item_name}.pkl'), 'wb') as file:
+                pickle.dump(item, file)
 
         # Backbone atom loss
         pred_bb_atoms = all_atom.to_atom37(pred_trans_1, pred_rotmats_1)[:, :, :3]
