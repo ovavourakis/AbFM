@@ -14,7 +14,7 @@ from models.flow_module import FlowModule
 from experiments import utils as eu
 
 log = eu.get_pylogger(__name__) # multi-GPU-friendly python CLI logger
-torch.set_float32_matmul_precision('high')
+torch.set_float32_matmul_precision('highest')
 
 class ModelRun:
 
@@ -84,7 +84,7 @@ class ModelRun:
 
         trainer = Trainer(
             **self._exp_cfg.trainer,
-            # detect_anomaly=True,
+            detect_anomaly=True,
             # num_sanity_val_steps=0,
             callbacks=callbacks,
             logger=self.logger,

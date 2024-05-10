@@ -304,7 +304,7 @@ class FlowModule(LightningModule):
         # always use it during validation, testing, and sampling (if specified)
         if self._interpolant_cfg.self_condition:
             
-            if stage in ['valid', 'test', 'sample'] or random.random() > 0.0:
+            if stage in ['valid', 'test', 'sample'] or random.random() > 0.5:
                 with torch.no_grad():
                     model_sc = self.model(noisy_batch)
                     noisy_batch['trans_sc'] = model_sc['pred_trans']
