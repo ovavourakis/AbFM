@@ -66,4 +66,13 @@ python $pmpnn_path"/protein_mpnn_run.py" \
 
 echo 'Deleting renamed PDBs...'
 find $folder_with_pdbs -type f -name "*.pdb" -exec rm -f {} +
+
+echo 'Trimming original sequence from FASTA files...'
+for fasta_file in $output_dir/seqs/*.fa; do
+    if [ -s "$fasta_file" ]; then
+        tail -n +3 "$fasta_file" > "$fasta_file.tmp"
+        mv "$fasta_file.tmp" "$fasta_file"
+    fi
+done
+
 echo 'Done.'
