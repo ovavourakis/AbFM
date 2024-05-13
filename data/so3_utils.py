@@ -233,7 +233,7 @@ def rotmat_to_rotvec(rotation_matrices: torch.Tensor) -> torch.Tensor:
     skew_outer = skew_outer + (torch.relu(skew_outer) - skew_outer) * id3
 
     # Get basic rotation vector as sqrt of diagonal (is unit vector).
-    vector_pi = torch.sqrt(torch.diagonal(skew_outer, dim1=-2, dim2=-1))
+    vector_pi = torch.sqrt(torch.diagonal(torch.clamp(skew_outer, min=1e-8), dim1=-2, dim2=-1))
 
     # Compute the signs of vector elements (up to a global phase).
     # Fist select indices for outer product slices with the largest norm.
