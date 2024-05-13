@@ -25,7 +25,8 @@ FeatureDict = Mapping[str, np.ndarray]
 ModelOutput = Mapping[str, Any]  # Is a nested dict.
 
 # Complete sequence of chain IDs supported by the PDB format.
-PDB_CHAIN_IDS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+# NOTE: altered to have H, L first for antibodies
+PDB_CHAIN_IDS = 'HLABCDEFGIJKMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
 PDB_MAX_CHAINS = len(PDB_CHAIN_IDS)  # := 62.
 
 
