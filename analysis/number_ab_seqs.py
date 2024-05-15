@@ -25,11 +25,12 @@ Output:
     - Plots summarizing the QC analysis.
 """
 
-import os, argparse
+import os, argparse, ast
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 from anarci import anarci
 from Bio import SeqIO
@@ -41,6 +42,18 @@ def chain_types_match(type, intended):
         return True
     return False
 
+def count_res_per_region(numbering_str):
+    numbering = ast.literal_eval(numbering_str)
+    count_fw1 = count_cdr1 = count_fw2 = count_cdr2 = count_fw3 = count_cdr3 = count_fw4 = 0
+    for (pos, ins_code), aa in numbering:
+        count_fw1 += int(pos <= 26 and aa != '-')
+        count_cdr1 += int(pos > 26 and pos <= 39 and aa != '-')
+        count_fw2 += int(pos > 39 and pos <= 55 and aa != '-')
+        count_cdr2 += int(pos > 55 and pos <= 65 and aa != '-')
+        count_fw3 += int(pos > 65 and pos <= 104 and aa != '-')
+        count_cdr3 += int(pos > 104 and pos <= 117 and aa != '-')
+        count_fw4 += int(pos > 117 and aa != '-')
+    return count_fw1, count_cdr1, count_fw2, count_cdr2, count_fw3, count_cdr3, count_fw4
 
 parser = argparse.ArgumentParser(description='Run overview QC on the sampled sequences for the generated structures.')
 parser.add_argument('--gen_dir', type=str, help='Path to directory with generated structures and sequences.', required=True)
@@ -48,6 +61,7 @@ parser.add_argument('--rerun_annotation', action='store_true', help='Flag to rer
 args = parser.parse_args()
 gen_dir = args.gen_dir
 
+# annotate using anarci -----------------------------------------------------------------------------------------------
 if args.rerun_annotation:
     print('Annotating Sequences...')  
     df = pd.DataFrame()
@@ -103,6 +117,7 @@ if args.rerun_annotation:
                     df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
     df.to_csv(os.path.join(gen_dir, "designed_seqs/anarci_annotation.csv"), index=False)
 
+# plot sequence qc -----------------------------------------------------------------------------------------------
 df = pd.read_csv(os.path.join(gen_dir, "designed_seqs/anarci_annotation.csv"))
 
 fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(20, 10), dpi=300)
@@ -160,3 +175,69 @@ for i, (title, frame) in enumerate([('Heavy-Chain Stats:', df[df['chain'] == 'H'
 
 plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 plt.savefig(os.path.join(gen_dir, "designed_seqs/chain_analysis.png"))
+
+# per region stats -----------------------------------------------------------------------------------------------
+df = df.dropna(subset=['domain_numbering'])
+region_counts = df.domain_numbering.apply(lambda x: count_res_per_region(x)).apply(pd.Series)
+region_counts.columns = ['lenFR1', 'lenCDR1', 'lenFR2', 'lenCDR2', 'lenFR3', 'lenCDR3', 'lenFR4']
+df = pd.concat([df, region_counts], axis=1)
+
+hc_df = df[df['chain'] == 'H']
+lc_df = df[df['chain'] == 'L']
+for i, frame in enumerate([df[df['chain'] == 'H'], df[df['chain'] == 'L']]):
+    ctype = 'H' if i == 0 else 'L'
+    color = '#f08080' if ctype == 'L' else '#add8e6'
+
+    domain_presence = frame[['lenFR1', 'lenCDR1', 'lenFR2', 'lenCDR2', 'lenFR3', 'lenCDR3','lenFR4']].gt(0).mean() * 100
+
+    fig, axes = plt.subplots(2, 4, figsize=(20, 10))
+    bars = domain_presence.plot(kind='bar', ax=axes[0, 0], color=color, edgecolor='black')
+    axes[0, 0].set_title('Domain Presence (%)', fontsize=14)
+    axes[0, 0].set_ylabel('structures containing domain (%)', fontsize=12)
+    axes[0, 0].set_xticklabels(['FR1', 'CDR1', 'FR2', 'CDR2', 'FR3', 'CDR3', 'FR4'], ha='center', rotation=0)
+    max_value = domain_presence.max()
+    axes[0, 0].set_ylim(0, max_value * 1.10)
+    for bar in bars.patches:  # add the value label above each bar
+        height = bar.get_height()
+        axes[0, 0].annotate(f'{height:.1f}',
+                            xy=(bar.get_x() + bar.get_width() / 2, height),
+                            xytext=(0, 3),  # 3 points vertical offset
+                            textcoords="offset points",
+                            ha='center', va='bottom')
+
+    titles = ['CDR1', 'CDR2', 'CDR3', 'FR1', 'FR2', 'FR3', 'FR4']
+    max_bins = max(frame['len'+title].nunique() for title in titles)
+    x_axis_bounds = {   'CDR1': (5, 21),
+                        'CDR2': (2, 18),
+                        'CDR3': (0, 16),
+                        'FR1': (19, 35),
+                        'FR2': (8, 24),
+                        'FR3': (28, 44),
+                        'FR4': (0, 16)
+                    }
+    for i, title in enumerate(titles, start=1):
+        row, col = divmod(i, 4)
+        hist = sns.histplot(frame['len'+title], bins=max_bins, ax=axes[row, col], stat='percent', kde=False, color=color, discrete=True)
+        adjusted_x_axis_bounds = (x_axis_bounds[title][0] - 0.5, x_axis_bounds[title][1] + 0.5)
+        axes[row, col].set_xlim(adjusted_x_axis_bounds)
+        axes[row, col].set_title(f'{title} Length Distribution', fontsize=14)
+        axes[row, col].set_xlabel('Length', fontsize=12)
+        axes[row, col].set_ylabel('Percentage (%)', fontsize=12)
+        max_value = domain_presence.max()
+        axes[row, col].set_ylim(0, max_value * 1.10)
+        x_ticks = range(x_axis_bounds[title][0], x_axis_bounds[title][1] + 1)
+        axes[row, col].set_xticks(x_ticks)
+        axes[row, col].set_xticklabels(x_ticks, ha='center')
+        for bar in hist.patches:
+            height = bar.get_height()
+            if height > 0:  # Only label bars with height > 0 to avoid clutter
+                axes[row, col].annotate(f'{height:.1f}',
+                                        xy=(bar.get_x() + bar.get_width() / 2, height),
+                                        xytext=(0, 3),  # 3 points vertical offset
+                                        textcoords="offset points",
+                                        ha='center', va='bottom', fontsize=10)
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(gen_dir, f"designed_seqs/region_analysis_{ctype}.png"))
+
+    # TODO fix the plot, save the final dataframe
