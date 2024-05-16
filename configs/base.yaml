@@ -99,8 +99,8 @@ experiment:                       # config for ModelRun
   training:
     loss: tot_loss                # in {"tot_loss", "bb_atom_loss", "trans_loss", "dist_mat_loss", "auxiliary_loss", "rots_vf_loss", "se3_vf_loss"}
     translation_loss_weight: 2.0
-    rotation_loss_weights: 0.3
-    aux_loss_weight: 1.0          # in relation to rototrans-losses considered together
+    rotation_loss_weights: 1.0
+    aux_loss_weight: 0.0          # in relation to rototrans-losses considered together
     aux_loss_t_pass: 0.5          # use auxiliary losses from t in [k,1]; 0<k<1
     t_normalize_clip: 0.9         # clip loss normaliser 1/(1-min(t,0.9))
     bb_atom_scale: 0.1            # convert coordinates from Angstrom to nm
