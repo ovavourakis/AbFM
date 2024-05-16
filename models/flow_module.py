@@ -3,6 +3,7 @@ import torch
 import time
 import os
 import random
+import pickle
 import wandb
 import numpy as np
 import pandas as pd
@@ -74,15 +75,13 @@ class FlowModule(LightningModule):
             # The latter is possible because @rank_zero_only decorator in WandbLogger implements guard 
             # equivalent to: https://lightning.ai/docs/pytorch/stable/visualize/logging_advanced.html#rank-zero-only
 
-            # I was previously passing
-            #       sync_dist=True, rank_zero_only=True (circumventing the check)
-            # probably very bad.
-
             # The defaults for both are False in Lightning Docs; Wandb doesn't suggest changing them.
             # https://docs.wandb.ai/guides/integrations/lightning#how-to-use-multiple-gpus-with-lightning-and-wb
 
-            sync_dist=False,        # whether to reduce metric across devices (adds communication overhead)
-            rank_zero_only=False    # logged only from rank 0
+            # Passing sync_dist=True (and rank_zero_only=False) seems to cause issues with stalling on multi-GPU runs.
+
+            sync_dist=False,       # whether to reduce metric across devices (adds communication overhead)
+            rank_zero_only=True    # logged only from rank 0
             # =======================================================================
         ):
         if sync_dist and rank_zero_only:
@@ -214,8 +213,27 @@ class FlowModule(LightningModule):
                 "se3_vf_loss": se3_vf_loss,
                 "tot_loss": tot_loss
             }
+        
         if torch.isnan(tot_loss).any():
-            raise ValueError(f'NaN loss encountered in batch: {noisy_batch["file"]}. \n LOSS COMPONENTS: \n {loss_dict}')
+            pickle_dir = self._exp_cfg.crash_dir
+            os.makedirs(pickle_dir, exist_ok=True)
+
+            items_to_pickle = [
+                ("loss_dict", loss_dict),
+                ("loss_mask", loss_mask),
+                ("noisy_batch", noisy_batch),
+                ("model_output", model_output),
+                ("norm_scale", norm_scale),
+                ("pred_rots_vf", pred_rots_vf),
+                ("pair_dist_mask", pair_dist_mask)
+            ]
+            for item_name, item in items_to_pickle:
+                with open(os.path.join(pickle_dir, f'{item_name}.pkl'), 'wb') as file:
+                    pickle.dump(item, file)
+
+            raise ValueError(f'NaN loss encountered in batch: {noisy_batch["file"]}. \n LOSS COMPONENTS: \n {loss_dict} \n \
+                             LOSS MASK: \n {loss_mask} \n NOISY BATCH: \n {noisy_batch} \n MODEL OUTPUT: \n {model_output} \n \
+                             NORM_SCALE: \n {norm_scale} \n PRED_ROTS_VF: \n {pred_rots_vf} \n PAIR_DIST_MASK: \n {pair_dist_mask} \n')
         return loss_dict
 
     def process_struc_batch(self, struc_batch, stage):

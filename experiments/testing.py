@@ -10,5 +10,7 @@ def test(cfg: DictConfig) -> None:
     run.test()
     
 if __name__ == "__main__":
-    test()
-    wandb.finish()
+    try:
+        test()
+    finally:
+        wandb.finish()

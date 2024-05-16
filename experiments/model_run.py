@@ -79,9 +79,12 @@ class ModelRun:
 
         devices = GPUtil.getAvailable(order='memory', limit=self._exp_cfg.num_devices)
         log.info(f"Using devices: {devices}")
+        if len(devices) > 1:
+            self._exp_cfg.trainer.accumulate_grad_batches = self._exp_cfg.trainer.accumulate_grad_batches//len(devices)
+
         trainer = Trainer(
             **self._exp_cfg.trainer,
-            # detect_anomaly=True,             # TODO: remove once debugged
+            # detect_anomaly=True,
             # num_sanity_val_steps=0,
             callbacks=callbacks,
             logger=self.logger,

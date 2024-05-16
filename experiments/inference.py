@@ -18,5 +18,7 @@ def sample(cfg: DictConfig) -> None:
     run.sample()
 
 if __name__ == "__main__":
-    sample()
-    wandb.finish()
+    try:
+        sample()
+    finally:
+        wandb.finish()
