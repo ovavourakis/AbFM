@@ -90,7 +90,7 @@ print("\nnumber of backbone breaks by total length:")
 print(mean_bb_breaks)
 
 # plot
-fig, ax = plt.subplots(1, 3, figsize=(6, 12))
+fig, ax = plt.subplots(1, 3, figsize=(12, 6))
 fig.suptitle('Synoptic Structure QC', fontsize=16)
 
 ax[0].set_title("Prevalence of Backbone Crosslinks", fontsize=14)
