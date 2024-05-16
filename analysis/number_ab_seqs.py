@@ -240,4 +240,4 @@ for i, frame in enumerate([df[df['chain'] == 'H'], df[df['chain'] == 'L']]):
     plt.tight_layout()
     plt.savefig(os.path.join(gen_dir, f"designed_seqs/region_analysis_{ctype}.png"))
 
-    # TODO fix the plot, save the final dataframe
+df.to_csv(os.path.join(gen_dir, "designed_seqs/successful_anarci_annotation.csv"), index=False)
