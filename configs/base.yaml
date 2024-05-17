@@ -12,7 +12,7 @@ data:
       subset: null                          # take 1st k instances from dataset that fit the seq-length criteria (null = all)
     train:
       bsampler:                             # config for batch sampler (of pdb structures)
-        batch_size: 10                      # choose small, so that loose few structures (and total lengths) through incomplete-batch omission each epoch
+        batch_size: 5 #10                      # choose small, so that loose few structures (and total lengths) through incomplete-batch omission each epoch
         num_struc_samples: null             # null: train on all structures in train set; else subsample top k (before splitting across replicas)
     valid:
       use_pdbs: True                        # run validation on known structures
@@ -91,7 +91,7 @@ model:
 
 experiment:                       # config for ModelRun
   debug: False
-  num_devices: 2                  # max number of GPUs to use, if available
+  num_devices: 4                  # max number of GPUs to use, if available
   warm_start_cfg_override: True   # if True, will override this config with the one from the checkpoint
   warm_start: null                # path to directory that contains *config* of checkpoint to warm-start from
   warm_start_weights: weights/published.ckpt # fine-tune starting from these weigths
@@ -99,8 +99,8 @@ experiment:                       # config for ModelRun
   training:
     loss: tot_loss                # in {"tot_loss", "bb_atom_loss", "trans_loss", "dist_mat_loss", "auxiliary_loss", "rots_vf_loss", "se3_vf_loss"}
     translation_loss_weight: 2.0
-    rotation_loss_weights: 1.0
-    aux_loss_weight: 0.0          # in relation to rototrans-losses considered together
+    rotation_loss_weights: 0.3
+    aux_loss_weight: 1.0          # in relation to rototrans-losses considered together
     aux_loss_t_pass: 0.5          # use auxiliary losses from t in [k,1]; 0<k<1
     t_normalize_clip: 0.9         # clip loss normaliser 1/(1-min(t,0.9))
     bb_atom_scale: 0.1            # convert coordinates from Angstrom to nm
@@ -130,14 +130,14 @@ experiment:                       # config for ModelRun
   optimizer:
     lr: 1e-4
   wandb:
-    name: phoenix1_04_long
+    name: phoenix2_06_long_seqclusters
     project: abfm
     save_code: True
     tags: []
   trainer:
     overfit_batches: 0            # set to non-zero to sanity-check model capacity
     min_epochs: 1                 # prevents early stopping
-    max_epochs: 50 #200
+    max_epochs: 70 #200
     accelerator: gpu
     log_every_n_steps: 1
     deterministic: False          # allow PyTorch to use non-deterministic algorithms
