@@ -164,15 +164,20 @@ class DistributedPdbBatchSampler(DistributedSampler):
         # start from complete dataset (train, val or test)
         full_dataset = self.dataset.pdb_csv
         full_dataset['index'] = list(range(len(full_dataset))) # needed later
-    
+        
+        # subsample one pdb per sequence-similarity cluster (for this epoch)
+        seed = self.seed + self.epoch # unique to each epoch, common across replicas
+        full_dataset = full_dataset.groupby('cluster_ids').sample(n=1, random_state=seed).reset_index(drop=True)
+
         # shuffle pdb indices, if specified
         if self.shuffle:
-            # deterministically shuffle based on epoch and seed
             g = torch.Generator()
-            g.manual_seed(self.seed + self.epoch)
-            indices = torch.randperm(len(self.dataset), generator=g).tolist()  # type: ignore[arg-type]
+            g.manual_seed(seed)
+            # indices = torch.randperm(len(self.dataset), generator=g).tolist()  # type: ignore[arg-type]
+            indices = torch.randperm(len(full_dataset), generator=g).tolist()  # type: ignore[arg-type]
         else:
-            indices = list(range(len(self.dataset)))  # type: ignore[arg-type]
+            # indices = list(range(len(self.dataset)))  # type: ignore[arg-type]
+            indices = list(range(len(full_dataset)))  # type: ignore[arg-type]
         # also subsample pdb indices if specified
         if self.cfg.num_struc_samples is not None:
             indices = indices[:self.cfg.num_struc_samples]
