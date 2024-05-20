@@ -44,7 +44,8 @@ class ModelRun:
             
             self._model: LightningModule = FlowModule.load_from_checkpoint(
                     checkpoint_path=self.ckpt_name,
-                    cfg=self._cfg
+                    cfg=self._cfg,
+                    map_location=lambda storage, loc: storage.cuda(torch.cuda.current_device())
             )
             self._model.eval()
 
