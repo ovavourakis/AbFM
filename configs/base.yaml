@@ -12,7 +12,7 @@ data:
       subset: null                          # take 1st k instances from dataset that fit the seq-length criteria (null = all)
     train:
       bsampler:                             # config for batch sampler (of pdb structures)
-        batch_size: 5 #10                      # choose small, so that loose few structures (and total lengths) through incomplete-batch omission each epoch
+        batch_size: 10                      # choose small, so that loose few structures (and total lengths) through incomplete-batch omission each epoch
         num_struc_samples: null             # null: train on all structures in train set; else subsample top k (before splitting across replicas)
     valid:
       use_pdbs: True                        # run validation on known structures
@@ -91,7 +91,7 @@ model:
 
 experiment:                       # config for ModelRun
   debug: False
-  num_devices: 4                  # max number of GPUs to use, if available
+  num_devices: 2                  # max number of GPUs to use, if available
   warm_start_cfg_override: True   # if True, will override this config with the one from the checkpoint
   warm_start: null                # path to directory that contains *config* of checkpoint to warm-start from
   warm_start_weights: weights/published.ckpt # fine-tune starting from these weigths
@@ -101,7 +101,7 @@ experiment:                       # config for ModelRun
     translation_loss_weight: 2.0
     rotation_loss_weights: 0.3
     aux_loss_weight: 1.0          # in relation to rototrans-losses considered together
-    aux_loss_t_pass: 0.5          # use auxiliary losses from t in [k,1]; 0<k<1
+    aux_loss_t_pass: 0.75          # use auxiliary losses from t in [k,1]; 0<k<1
     t_normalize_clip: 0.9         # clip loss normaliser 1/(1-min(t,0.9))
     bb_atom_scale: 0.1            # convert coordinates from Angstrom to nm
     trans_scale: 0.1              # convert coordinates from Angstrom to nm
@@ -130,7 +130,7 @@ experiment:                       # config for ModelRun
   optimizer:
     lr: 1e-4
   wandb:
-    name: phoenix2_06_long_seqclusters
+    name: aux75p_ft_rbl_seqclust_70ep_bs10
     project: abfm
     save_code: True
     tags: []
@@ -148,7 +148,7 @@ experiment:                       # config for ModelRun
   checkpointer:
     dirpath: ckpt/${experiment.wandb.project}/${experiment.wandb.name}/${now:%Y-%m-%d}_${now:%H-%M-%S}
     save_last: True
-    save_top_k: 3
+    save_top_k: 5
     monitor: valid/loss                                                                                                         # TODO: we want to monitor AB like-ness of *generations*, too
     mode: min
     # every_n_train_steps: 166     # checkpoint more than once per epoch (# gradient steps = global_step) = 1000//6
