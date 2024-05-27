@@ -29,7 +29,7 @@ class FlowModule(LightningModule):
         self._print_logger = logging.getLogger(__name__)
 
         self.model = FlowModel(cfg.model)                   # CNF model proper
-        self.interpolant = Interpolant(cfg.interpolant)     # handles noising and ODE
+        self.interpolant = Interpolant(cfg.interpolant)     # handles noising and ODE prop
 
         self._interpolant_cfg = cfg.interpolant
         self._exp_cfg = cfg.experiment
@@ -46,10 +46,19 @@ class FlowModule(LightningModule):
         self.save_hyperparameters() # saves to self.hparams (also in model checkpoints)
     
     def configure_optimizers(self):
-        return torch.optim.AdamW(
-            params=self.model.parameters(),
-            **self._exp_cfg.optimizer
-        )
+        optimizer = torch.optim.AdamW(params=self.model.parameters(),
+                                        **self._exp_cfg.optimizer)
+        lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+                                        optimizer,
+                                        factor=self._exp_cfg.lr_scheduler.factor,
+                                        patience=self._exp_cfg.lr_scheduler.patience)
+        lr_scheduler_config = { 'scheduler': lr_scheduler,
+                                'monitor': self._exp_cfg.lr_scheduler.monitor,  
+                                'interval': self._exp_cfg.lr_scheduler.interval,
+                                'frequency': self._exp_cfg.lr_scheduler.frequency,
+                                'strict': self._exp_cfg.lr_scheduler.strict
+                            }
+        return {'optimizer': optimizer, 'lr_scheduler': lr_scheduler_config}
     
     def _log_scalar(
             self,

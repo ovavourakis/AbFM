@@ -151,5 +151,11 @@ experiment:                       # config for ModelRun
     save_top_k: 5
     monitor: valid/loss                                                                                                         # TODO: we want to monitor AB like-ness of *generations*, too
     mode: min
-    # every_n_train_steps: 166     # checkpoint more than once per epoch (# gradient steps = global_step) = 1000//6
     every_n_epochs: 1
+  lr_scheduler:                   # config for learning ReduceLROnPlateau scheduler
+    factor: 0.2
+    patience: 3
+    monitor: ${experiment.checkpointer.monitor}
+    interval: epoch
+    frequency: ${experiment.trainer.check_val_every_n_epoch}
+    strict: False
