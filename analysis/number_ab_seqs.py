@@ -120,9 +120,9 @@ if args.rerun_annotation:
 # plot sequence qc -----------------------------------------------------------------------------------------------
 df = pd.read_csv(os.path.join(gen_dir, "designed_seqs/anarci_annotation.csv"))
 
-fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(20, 10), dpi=300)
-fig.suptitle('Synoptic Sequence QC', fontsize=20, y=0.96)
-titles = ['Percent Successfully Numbered', 'Percent Recognised as Single-Domain', 'Percent Recognised as Human', 'Percent with Correct Inferred Sequence Type']
+fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(17, 9), dpi=300)
+# fig.suptitle('Synoptic Sequence QC', fontsize=24, y=0.96)
+titles = ['Percent Successfully \n Numbered', 'Percent Recognised as \n Single-Domain', 'Percent Recognised as \n Human', 'Percent with Correct \n Inferred Sequence Type']
 chain_labels = ['Heavy Chain', 'Light Chain']
 
 for i, (title, frame) in enumerate([('Heavy-Chain Stats:', df[df['chain'] == 'H'].copy()), 
@@ -157,21 +157,24 @@ for i, (title, frame) in enumerate([('Heavy-Chain Stats:', df[df['chain'] == 'H'
         metrics = [pc_numbered_bins, pc_single_domain_bins, pc_human_bins, pc_correct_type_bins]
         for j, metric in enumerate(metrics):
             bars = axes[i, j].bar(metric.index, metric.values, color='#add8e6' if i == 0 else '#f08080')
-            axes[i, j].set_title(titles[j], fontsize=14)
+            if i == 0:
+                axes[i, j].set_title(titles[j], fontsize=18)
             axes[i, j].set_xticks(range(len(labels)))
-            axes[i, j].set_xticklabels(labels, ha='center', fontsize=12)
-            axes[i, j].set_xlabel('Sequence Length (AA)', fontsize=12)
+            axes[i, j].set_xticklabels(labels, ha='center', fontsize=14, rotation=35)
+            if i == 1:
+                axes[i, j].set_xlabel('Sequence Length (AA)', fontsize=14)
             max_y_value = metric.values.max() * 1.10 
             axes[i, j].set_ylim(0, max_y_value)
+            axes[i, j].tick_params(axis='y', labelsize=14)  # Increase y-axis tick label size
             for bar in bars:
                 height = bar.get_height()
-                axes[i, j].annotate(f'{height:.2f}%',
+                axes[i, j].annotate(f'{height:.1f}%',
                                     xy=(bar.get_x() + bar.get_width() / 2, height),
                                     xytext=(0, 3),  # 3 points vertical offset
                                     textcoords="offset points",
-                                    ha='center', va='bottom', fontsize=10)
+                                    ha='center', va='bottom', fontsize=12)
             if j == 0:
-                axes[i, j].set_ylabel(chain_labels[i], fontsize=16)
+                axes[i, j].set_ylabel(chain_labels[i], fontsize=18)
 
 plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 plt.savefig(os.path.join(gen_dir, "designed_seqs/chain_analysis.png"))
@@ -190,20 +193,21 @@ for i, frame in enumerate([df[df['chain'] == 'H'], df[df['chain'] == 'L']]):
 
     domain_presence = frame[['lenFR1', 'lenCDR1', 'lenFR2', 'lenCDR2', 'lenFR3', 'lenCDR3','lenFR4']].gt(0).mean() * 100
 
-    fig, axes = plt.subplots(2, 4, figsize=(20, 10))
+    fig, axes = plt.subplots(2, 4, figsize=(17, 9))
     bars = domain_presence.plot(kind='bar', ax=axes[0, 0], color=color, edgecolor='black')
-    axes[0, 0].set_title('Domain Presence (%)', fontsize=14)
-    axes[0, 0].set_ylabel('structures containing domain (%)', fontsize=12)
-    axes[0, 0].set_xticklabels(['FR1', 'CDR1', 'FR2', 'CDR2', 'FR3', 'CDR3', 'FR4'], ha='center', rotation=0)
+    axes[0, 0].set_title('Domain Presence (%)', fontsize=16)
+    axes[0, 0].set_ylabel('structures containing domain (%)', fontsize=16)
+    axes[0, 0].set_yticklabels([f'{int(y)}' for y in axes[0, 0].get_yticks()], fontsize=14)
+    axes[0, 0].set_xticklabels(['FR1', 'CDR1', 'FR2', 'CDR2', 'FR3', 'CDR3', 'FR4'], ha='center', rotation=15, fontsize=14)
     max_value = domain_presence.max()
-    axes[0, 0].set_ylim(0, max_value * 1.10)
+    axes[0, 0].set_ylim(0, max_value * 1.19)
     for bar in bars.patches:  # add the value label above each bar
         height = bar.get_height()
         axes[0, 0].annotate(f'{height:.1f}',
                             xy=(bar.get_x() + bar.get_width() / 2, height),
                             xytext=(0, 3),  # 3 points vertical offset
                             textcoords="offset points",
-                            ha='center', va='bottom')
+                            ha='center', va='bottom', fontsize=12, rotation=90)
 
     titles = ['CDR1', 'CDR2', 'CDR3', 'FR1', 'FR2', 'FR3', 'FR4']
     max_bins = max(frame['len'+title].nunique() for title in titles)
@@ -220,14 +224,21 @@ for i, frame in enumerate([df[df['chain'] == 'H'], df[df['chain'] == 'L']]):
         hist = sns.histplot(frame['len'+title], bins=max_bins, ax=axes[row, col], stat='percent', kde=False, color=color, discrete=True)
         adjusted_x_axis_bounds = (x_axis_bounds[title][0] - 0.5, x_axis_bounds[title][1] + 0.5)
         axes[row, col].set_xlim(adjusted_x_axis_bounds)
-        axes[row, col].set_title(f'{title} Length Distribution', fontsize=14)
-        axes[row, col].set_xlabel('Length', fontsize=12)
-        axes[row, col].set_ylabel('Percentage (%)', fontsize=12)
+        axes[row, col].set_title(f'{title} Length Distribution', fontsize=16)
+        if row == 1:
+            axes[row, col].set_xlabel('Sequence Length (AA)', fontsize=16)
+        else:
+            axes[row, col].set_xlabel('')
+        if (col == 1 and row == 0) or (col == 0 and row == 1):
+            axes[row, col].set_ylabel('Percentage (%)', fontsize=16)
+        else:
+            axes[row, col].set_ylabel('')
         max_value = domain_presence.max()
-        axes[row, col].set_ylim(0, max_value * 1.10)
+        axes[row, col].set_ylim(0, max_value * 1.19)
         x_ticks = range(x_axis_bounds[title][0], x_axis_bounds[title][1] + 1)
         axes[row, col].set_xticks(x_ticks)
-        axes[row, col].set_xticklabels(x_ticks, ha='center')
+        axes[row, col].set_xticklabels(x_ticks, ha='center', fontsize=14, rotation=90)
+        axes[row, col].set_yticklabels([f'{int(y)}' for y in axes[0, 0].get_yticks()], fontsize=14)
         for bar in hist.patches:
             height = bar.get_height()
             if height > 0:  # Only label bars with height > 0 to avoid clutter
@@ -235,7 +246,7 @@ for i, frame in enumerate([df[df['chain'] == 'H'], df[df['chain'] == 'L']]):
                                         xy=(bar.get_x() + bar.get_width() / 2, height),
                                         xytext=(0, 3),  # 3 points vertical offset
                                         textcoords="offset points",
-                                        ha='center', va='bottom', fontsize=10)
+                                        ha='center', va='bottom', fontsize=12, rotation=90)
 
     plt.tight_layout()
     plt.savefig(os.path.join(gen_dir, f"designed_seqs/region_analysis_{ctype}.png"))

@@ -30,7 +30,7 @@ def plot_ramachandran(phi_psi_angles, title, plot_type="kde_fill", ax=None, colo
     
     ax.set_xlabel(r'$\phi$ ($^\circ$)', fontsize=12)
     ax.set_ylabel(r'$\psi$ ($^\circ$)', fontsize=12)
-    ax.set_title(title)
+    # ax.set_title(title)
     ax.set_xlim(-180, 180)
     ax.set_ylim(-180, 180)
     ax.legend()
