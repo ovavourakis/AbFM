@@ -153,8 +153,8 @@ experiment:                       # config for ModelRun
     mode: min
     every_n_epochs: 1
   lr_scheduler:                   # config for learning ReduceLROnPlateau scheduler
-    factor: 0.1
-    patience: 2
+    factor: 0.2
+    patience: 3
     monitor: ${experiment.checkpointer.monitor}
     interval: epoch
     frequency: ${experiment.trainer.check_val_every_n_epoch}
