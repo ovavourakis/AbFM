@@ -260,7 +260,8 @@ class DataModule(LightningDataModule):
                 pdb_csv = pdb_csv.iloc[:int(self.data_cfg.dataset.pdbs.subset)]
             
             # train split
-            self.train_pdbs = PdbDataset(pdb_csv=pdb_csv[pdb_csv.split == 'train'])
+            # self.train_pdbs = PdbDataset(pdb_csv=pdb_csv[pdb_csv.split == 'train'])
+            self.train_pdbs = PdbDataset(pdb_csv=pdb_csv)
             self._log.info(f'{len(self.train_pdbs)} TRAINING pdbs.')
             # val split
             self.valid_pdbs, self.valid_gens = None, None
