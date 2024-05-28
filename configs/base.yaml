@@ -130,7 +130,7 @@ experiment:                       # config for ModelRun
   optimizer:
     lr: 1e-4
   wandb:
-    name: aux75p_ft_rbl_seqclust_70ep_bs10
+    name: Unif_TRAINALL_aux75p_ft_rbl_seqclust_70ep_bs10
     project: abfm
     save_code: True
     tags: []

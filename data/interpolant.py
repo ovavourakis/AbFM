@@ -100,10 +100,13 @@ class Interpolant:
     
     def _corrupt_rotmats(self, rotmats_1, t, res_mask):
         num_batch, num_res = res_mask.shape
-        noisy_rotmats = self.igso3.sample(
-            torch.tensor([1.5]),
-            num_batch*num_res
-        ).to(self._device)
+
+        noisy_rotmats = _uniform_so3(num_batch, num_res, self._device)
+        # noisy_rotmats = self.igso3.sample(
+        #     torch.tensor([1.5]),
+        #     num_batch*num_res
+        # ).to(self._device)
+
         noisy_rotmats = noisy_rotmats.reshape(num_batch, num_res, 3, 3)
         rotmats_0 = torch.einsum(
             # difference between complete noise (t=0) and correct matrix (t=1)
@@ -224,6 +227,11 @@ class Interpolant:
         # NOTE: during sampling we start from uniform on SO3
         #       whereas training used IGSO3
         rotmats_0 = _uniform_so3(num_batch, num_res, self._device)
+        # rotmats_0 = self.igso3.sample(
+        #     torch.tensor([1.5]),
+        #     num_batch*num_res
+        # ).to(self._device)
+
         trans_0 = _centered_gaussian(
             num_batch, num_res, self._device) * du.NM_TO_ANG_SCALE
         # set up time grid for integration
