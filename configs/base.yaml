@@ -6,7 +6,7 @@ data:
         prefetch_factor: 10
   dataset:
     pdbs:
-      csv_path: ./ab_processed/metadata.csv # metadata and paths to preprocessed data per antibody
+      csv_path: ./ab_processed_newclust/metadata.csv # metadata and paths to preprocessed data per antibody
       min_num_res: 215
       max_num_res: 260
       subset: null                          # take 1st k instances from dataset that fit the seq-length criteria (null = all)

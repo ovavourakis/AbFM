@@ -7,7 +7,7 @@ Requires a pre-filtered CSV file with PDB paths and metadata
 (produced by pre_filter_ab_data.py).
 
 Usage:
-python process_ab_pdb_files.py --pdb_dir /vols/opig/users/vavourakis/data/OAS_models/structures --csv_path /vols/opig/users/vavourakis/data/OAS_models/OAS_paired_filtered_newclust.csv --num_processes 8 --write_dir /vols/opig/users/vavourakis/data/ab_processed_newclust
+python process_ab_pdb_files.py --pdb_dir /vols/opig/users/vavourakis/data/OAS_models/structures --csv_path /vols/opig/users/vavourakis/data/OAS_models/OAS_paired_filtered_newclust.csv --num_processes 8 --write_dir /vols/opig/users/vavourakis/data/ab_processed_newclust --rerun_blobb
 """
 
 import argparse
@@ -112,6 +112,10 @@ def process_file(file_path: str, write_dir: str, rerun_blobb: bool = False):
 
     # sanity-check structure
     checks = blobb_check(file_path, rerun_check=rerun_blobb)
+    if checks is False:
+        print(f'Failed to run blobb_check on file {file_path}. Skipping.')
+        return None, None, None
+    
     bb_breaks, bb_bad_links = checks[1], checks[2]
     if bb_breaks > 0 or bb_bad_links:
         print(f'Backbone breaks or crosslinks detected. Skipping file {file_path}.')
@@ -294,8 +298,24 @@ def main(args):
         all_metadata, all_vh_angles, all_vl_angles = zip(*results)
 
         all_metadata = [x for x in all_metadata if x is not None]
-        all_vh_angles = [resangle for chain in all_vh_angles for resangle in chain if resangle[0] is not None and resangle[1] is not None]
-        all_vl_angles = [resangle for chain in all_vl_angles for resangle in chain if resangle[0] is not None and resangle[1] is not None]
+        all_vh_angles = [x for x in all_vh_angles if x is not None]
+        all_vl_angles = [x for x in all_vl_angles if x is not None]
+
+        temp_vh_angles = []
+        for chain in all_vh_angles:
+            if chain is not None:
+                for resangle in chain:
+                    if resangle[0] is not None and resangle[1] is not None:
+                        temp_vh_angles.append(resangle)
+        all_vh_angles = temp_vh_angles
+
+        temp_vl_angles = []
+        for chain in all_vl_angles:
+            if chain is not None:
+                for resangle in chain:
+                    if resangle[0] is not None and resangle[1] is not None:
+                        temp_vl_angles.append(resangle)
+        all_vl_angles = temp_vl_angles
 
     # output metadata csv
     metadata_df = pd.DataFrame(all_metadata)
