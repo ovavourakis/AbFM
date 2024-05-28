@@ -519,7 +519,8 @@ class FlowModule(LightningModule):
             bb_traj[-1],        # final state as atom coords
             bb_traj,            # entire trajectory as atom coords
             # trajectory of final-state projections as atom coords
-            np.flip(du.to_numpy(torch.concat(model_traj, dim=0)), axis=0),
+            # np.flip(du.to_numpy(torch.concat(model_traj, dim=0)), axis=0),
+            du.to_numpy(torch.concat(model_traj, dim=0)),
             du.to_numpy(diffuse_mask)[0], # array of 1s (sample-length)
             du.to_numpy(res_idx),         # residue index (sample-length)
             output_dir=sample_dir,

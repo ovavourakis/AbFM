@@ -57,9 +57,10 @@ class Interpolant:
 
     def sample_t(self, num_batch): 
        # theoretically in [0,1)
-       # practically in [min_t, 1-min_t]
+       # practically in [0, 1-min_t]
        t = torch.rand(num_batch, device=self._device)
-       return t * (1 - 2*self._cfg.min_t) + self._cfg.min_t
+       return t * (1 - self._cfg.min_t)
+    #    return t * (1 - 2*self._cfg.min_t) + self._cfg.min_t
 
     def _corrupt_trans(self, trans_1, t, res_mask):
         trans_nm_0 = _centered_gaussian(*res_mask.shape, self._device)
@@ -217,7 +218,7 @@ class Interpolant:
         res_idx = torch.cat([idx_h, idx_l])
         res_mask = torch.ones(num_batch, num_res, device=self._device)
         batch = {'res_idx': res_idx,    
-             'res_mask': res_mask,
+                 'res_mask': res_mask,
         }
         # start with a sample from the prior distribution
         # NOTE: during sampling we start from uniform on SO3
@@ -227,7 +228,8 @@ class Interpolant:
             num_batch, num_res, self._device) * du.NM_TO_ANG_SCALE
         # set up time grid for integration
         ts = torch.linspace(
-            self._cfg.min_t, 1.0, self._sample_cfg.num_timesteps)
+            # self._cfg.min_t, 1.0, self._sample_cfg.num_timesteps)
+            0.0, 1.0, self._sample_cfg.num_timesteps)
         t_1 = ts[0]
         # propagate system forward in time
         prot_traj = [(trans_0, rotmats_0)]
