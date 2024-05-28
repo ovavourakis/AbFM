@@ -4,9 +4,49 @@ import re
 from data import protein
 from openfold.utils import rigid_utils
 
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import matplotlib.lines as mlines
+import seaborn as sns
 
 Rigid = rigid_utils.Rigid
 
+def plot_ramachandran(phi_psi_angles, title, plot_type="kde_fill", ax=None, color="r"):
+    # phi_psi_angles is a single list of tuples (phi, psi)
+    phi_angles = [phi * 180 / np.pi for phi, psi in phi_psi_angles if phi is not None]  # radians to degrees
+    psi_angles = [psi * 180 / np.pi for phi, psi in phi_psi_angles if psi is not None]  # radians to degrees
+    
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(8, 6))
+    
+    if plot_type == "kde_fill":
+        sns.kdeplot(x=phi_angles, y=psi_angles, ax=ax, color=color, fill=True, 
+                    levels=np.linspace(0.1, 1, 10), cut=0)
+    elif plot_type == "kde_line":
+        sns.kdeplot(x=phi_angles, y=psi_angles, ax=ax, color=color, fill=False, 
+                    levels=np.linspace(0.1, 1, 10), cut=0)
+    elif plot_type == "scatter":
+        ax.scatter(phi_angles, psi_angles, color=color, alpha=0.2, s=1)
+    
+    ax.set_xlabel(r'$\phi$ ($^\circ$)', fontsize=12)
+    ax.set_ylabel(r'$\psi$ ($^\circ$)', fontsize=12)
+    # ax.set_title(title)
+    ax.set_xlim(-180, 180)
+    ax.set_ylim(-180, 180)
+    ax.legend()
+
+    return ax
+
+def overlay_ramachandran(data, reference, title='Title', color='b', 
+                         labels=['Data', 'Reference'], fname='ramachandran.png'):
+    ax = plot_ramachandran(reference, title, plot_type="kde_fill", color=color)
+    ax = plot_ramachandran(data, title, plot_type="kde_line", color="black", ax=ax)
+
+    kde_legendpatch = mpatches.Patch(color=color, label=labels[1], alpha=0.5)
+    kde_legendline = mlines.Line2D([], [], color='black', label=labels[0])
+    ax.legend(handles=[kde_legendpatch, kde_legendline], loc='lower right')
+    plt.tight_layout()
+    plt.savefig(fname, dpi=300)
 
 def create_full_prot(
         atom37: np.ndarray,

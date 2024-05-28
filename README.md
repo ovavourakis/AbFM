@@ -25,13 +25,17 @@ conda env create -f fm.yml
 # Activate environment
 conda activate fm
 
-# Manually need to install torch-scatter.
+# Manually need to install torch-scatter...
 pip install torch-scatter -f https://data.pyg.org/whl/torch-2.0.0+cu117.html
+# ... as well as blobb_structure_checking.
+conda install -c bioconda "biobb_structure_checking>=3.13.4"
 
 # Install local package.
 # Current directory should be protein-frame-flow/
 pip install -e .
 ```
+
+For more information on `blobb_structure_checking` look at the [repo](https://github.com/bioexcel/biobb_structure_checking, and the [documentation](https://biobb-structure-checking.readthedocs.io/en/latest/command_line_usage.html).
 
 ## Wandb
 

@@ -1,5 +1,4 @@
 import yaml
-import pandas as pd
 import numpy as np
 
 def ANARCI_to_sequence(anarci_str: str):
