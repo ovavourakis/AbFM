@@ -25,9 +25,9 @@ MAX_SEQ_LEN = 260
 col_drop_filters = ['_aa_', '_alignment_', 'junction', 'cdr', 'fwr', 'fwk', 'fwl']
 
 all_metadata_csv = "/vols/opig/users/vavourakis/data/OAS_models/OAS_paired_all.csv"
-splits_csv = "/vols/opig/users/vavourakis/data/oas_splits.csv"
+clusters_csv = "/vols/opig/users/vavourakis/data/metadata_clustered.csv"
 strucs_dir = "/vols/opig/users/vavourakis/data/OAS_models/structures"
-out_filtered_csv = "/vols/opig/users/vavourakis/data/OAS_models/OAS_paired_prefiltered.csv"
+out_filtered_csv = "/vols/opig/users/vavourakis/data/OAS_models/OAS_paired_filtered_newclust.csv"
 
 def process_row(x):
     return ANARCIs_to_sequence(x.ANARCI_numbering_heavy, x.ANARCI_numbering_light)
@@ -40,11 +40,12 @@ if __name__ == '__main__':
     df.rename(columns={'full_seq': 'full_seq_orig'}, inplace=True)
     for filter in col_drop_filters:
         df.drop([col for col in df.columns if filter in col], axis=1, inplace=True)
-    print('reading splits')
-    splits = pd.read_csv(splits_csv)
+    print('reading clusters')
+    clusters = pd.read_csv(clusters_csv)[['oas_id', 'cluster_ids']]
+    clusters.oas_id = clusters.oas_id.apply(lambda s: s.split('_')[0])
     print('merging')
-    df = pd.merge(df, splits, left_on='ID', right_on='oas_id', suffixes=('', '_drop'))
-    df['oas_id'] = df['ID'].fillna(df['oas_id'])
+    df = pd.merge(df, clusters, left_on='ID', right_on='oas_id', suffixes=('', '_drop'))
+    # df['oas_id'] = df['ID'].fillna(df['oas_id'])
     df.drop([col for col in df.columns if 'drop' in col], axis=1, inplace=True)
 
     print(f'\n{len(df)} entries before filtering')

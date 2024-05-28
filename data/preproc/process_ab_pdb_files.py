@@ -7,7 +7,7 @@ Requires a pre-filtered CSV file with PDB paths and metadata
 (produced by pre_filter_ab_data.py).
 
 Usage:
-python process_ab_pdb_files.py --pdb_dir /vols/opig/users/vavourakis/data/OAS_models/structures --csv_path /vols/opig/users/vavourakis/data/OAS_models/OAS_paired_prefiltered.csv --num_processes 12 --write_dir /vols/opig/users/vavourakis/data/new_ab_processed --rerun_blobb
+python process_ab_pdb_files.py --pdb_dir /vols/opig/users/vavourakis/data/OAS_models/structures --csv_path /vols/opig/users/vavourakis/data/OAS_models/OAS_paired_filtered_newclust.csv --num_processes 8 --write_dir /vols/opig/users/vavourakis/data/ab_processed_newclust
 """
 
 import argparse

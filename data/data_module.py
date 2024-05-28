@@ -266,7 +266,8 @@ class DataModule(LightningDataModule):
             # val split
             self.valid_pdbs, self.valid_gens = None, None
             if self.data_cfg.dataset.valid.use_pdbs:
-                valid_pdbs = pdb_csv[pdb_csv.split == 'valid']
+                valid_pdbs = pdb_csv
+                # valid_pdbs = pdb_csv[pdb_csv.split == 'valid']
                 self.valid_pdbs = PdbDataset(pdb_csv=valid_pdbs)
                 self._log.info(f'{len(self.valid_pdbs)} VALIDATION pdbs; will sub-sample {self.data_cfg.dataset.valid.bsampler.num_struc_samples} per validation run.')
             if self.data_cfg.dataset.valid.generate:
@@ -276,7 +277,8 @@ class DataModule(LightningDataModule):
             # test split
             self.test_pdbs, self.test_gens = None, None
             if self.data_cfg.dataset.test.use_pdbs:
-                test_pdbs = pdb_csv[pdb_csv.split == 'test']
+                test_pdbs = pdb_csv
+                # test_pdbs = pdb_csv[pdb_csv.split == 'test']
                 self.test_pdbs = PdbDataset(pdb_csv=test_pdbs)
                 self._log.info(f'{len(self.test_pdbs)} TESTING pdbs; will sub-sample {self.data_cfg.dataset.test.bsampler.num_struc_samples} per test run.')
             if self.data_cfg.dataset.test.generate:
