@@ -137,7 +137,7 @@ experiment:                       # config for ModelRun
   trainer:
     overfit_batches: 0            # set to non-zero to sanity-check model capacity
     min_epochs: 1                 # prevents early stopping
-    max_epochs: 70 #200
+    max_epochs: 220 #70 #200
     accelerator: gpu
     log_every_n_steps: 1
     deterministic: False          # allow PyTorch to use non-deterministic algorithms
