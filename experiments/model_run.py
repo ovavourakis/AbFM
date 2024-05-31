@@ -30,7 +30,8 @@ class ModelRun:
             if self._exp_cfg.warm_start_cfg_override and self._exp_cfg.warm_start_weights is not None:
                 self._model: LightningModule = FlowModule.load_from_checkpoint(
                     checkpoint_path=self._exp_cfg.warm_start_weights,
-                    cfg=self._cfg
+                    cfg=self._cfg,
+                    map_location=lambda storage, loc: storage.cuda(torch.cuda.current_device())
                 )
             else:
                 self._model: LightningModule = FlowModule(self._cfg)
