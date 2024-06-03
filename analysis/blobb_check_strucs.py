@@ -9,7 +9,7 @@ distribution of these problems across different total lengths
 in the dataset.
 
 Usage: 
-python blobb_check_strucs.py --num_processes 8 --pdb_dir /vols/opig/users/vavourakis/generations/ftnl_auxloss_lastquarter_inference --rerun_check
+python blobb_check_strucs.py --num_processes 8 --pdb_dir /vols/opig/users/vavourakis/generations/NEWCLUST_last --rerun_check
 """
 
 import os, argparse
@@ -34,6 +34,7 @@ rerun_check = args.rerun_check
 out_dir = pdb_dir
 
 all_file_paths = [os.path.join(root, file) for root, dirs, files in os.walk(pdb_dir) for file in files if file == "sample.pdb"]
+
 print(pdb_dir)
 print('\n')
 
@@ -59,7 +60,8 @@ for metric_name, metric_values in metrics:
 # mean and std of problem counts per structure
 print("\n")
 for metric_name, metric_values in [("missing_o", missing_o), ("bb_breaks", bb_breaks)]:
-    metric_mean = sum(metric_values) / len(metric_values)
+    metric_values_non_zero = [value for value in metric_values if value > 0]
+    metric_mean = sum(metric_values_non_zero) / len(metric_values_non_zero) if metric_values_non_zero else 0
     metric_std = (sum((i - metric_mean) ** 2 for i in metric_values) / len(metric_values)) ** 0.5
     print(f"Distribution #{metric_name}: \t\t {metric_mean:.2f} +/- {metric_std:.2f}")
 
@@ -93,22 +95,22 @@ print(mean_bb_breaks)
 fig, ax = plt.subplots(1, 3, figsize=(12, 4))
 # fig.suptitle('Synoptic Structure QC', fontsize=16)
 
-ax[0].set_title("Prevalence of Backbone Crosslinks", fontsize=14)
+ax[0].set_title("Steric Clashes", fontsize=14)
 bb_crosslinks_percentage.plot(kind='bar', ax=ax[0], color='blue', alpha=0.7)
 ax[0].bar_label(ax[0].containers[0], fmt='%.0f', fontsize=12)
 ax[0].set_ylim(0, 100)
-ax[0].set_ylabel("structures with crosslinks (%)", fontsize=12)
+ax[0].set_ylabel("prevalence (% of structures)", fontsize=12)
 
-ax[1].set_title("Prevalence of Backbone Breaks", fontsize=14)
+ax[1].set_title("Chain Breaks", fontsize=14)
 bb_breaks_percentage.plot(kind='bar', ax=ax[1], color='green', alpha=0.7)
 ax[1].bar_label(ax[1].containers[0], fmt='%.0f', fontsize=12)
 ax[1].set_ylim(0, 100)
-ax[1].set_ylabel("structures with breaks (%)", fontsize=12)
+ax[1].set_ylabel("prevalence (% of structures)", fontsize=12)
 
-ax[2].set_title("Mean Backbone Breaks per Structure", fontsize=14)
+ax[2].set_title("Chain Breaks per Structure", fontsize=14)
 mean_bb_breaks.plot(kind='bar', ax=ax[2], color='red', alpha=0.7)
 ax[2].bar_label(ax[2].containers[0], fmt='%.2f', fontsize=12)
-ax[2].set_ylabel("number of backbone breaks", fontsize=12)
+ax[2].set_ylabel("number of breaks", fontsize=12)
 max_value = mean_bb_breaks.max()
 ax[2].set_ylim(0, max_value * 1.1)
 
