@@ -122,7 +122,7 @@ df = pd.read_csv(os.path.join(gen_dir, "designed_seqs/anarci_annotation.csv"))
 
 fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(17, 9), dpi=300)
 # fig.suptitle('Synoptic Sequence QC', fontsize=24, y=0.96)
-titles = ['Percent Successfully \n Numbered', 'Percent Recognised as \n Single-Domain', 'Percent Recognised as \n Human', 'Percent with Correct \n Inferred Sequence Type']
+titles = ['Percent Successfully \n Numbered', 'Percent Recognised as \n Single-Domain', 'Percent Recognised as \n Human', 'Percent with Matching \n Inferred Locus']
 chain_labels = ['Heavy Chain', 'Light Chain']
 
 for i, (title, frame) in enumerate([('Heavy-Chain Stats:', df[df['chain'] == 'H'].copy()), 
@@ -156,7 +156,7 @@ for i, (title, frame) in enumerate([('Heavy-Chain Stats:', df[df['chain'] == 'H'
         # plot by-length stats for this chain type
         metrics = [pc_numbered_bins, pc_single_domain_bins, pc_human_bins, pc_correct_type_bins]
         for j, metric in enumerate(metrics):
-            bars = axes[i, j].bar(metric.index, metric.values, color='#add8e6' if i == 0 else '#f08080')
+            bars = axes[i, j].bar(metric.index, metric.values, color='b' if i == 0 else 'r', alpha=0.5)
             if i == 0:
                 axes[i, j].set_title(titles[j], fontsize=18)
             axes[i, j].set_xticks(range(len(labels)))
@@ -189,12 +189,12 @@ hc_df = df[df['chain'] == 'H']
 lc_df = df[df['chain'] == 'L']
 for i, frame in enumerate([df[df['chain'] == 'H'], df[df['chain'] == 'L']]):
     ctype = 'H' if i == 0 else 'L'
-    color = '#f08080' if ctype == 'L' else '#add8e6'
+    color = 'r' if ctype == 'L' else 'b'
 
     domain_presence = frame[['lenFR1', 'lenCDR1', 'lenFR2', 'lenCDR2', 'lenFR3', 'lenCDR3','lenFR4']].gt(0).mean() * 100
 
     fig, axes = plt.subplots(2, 4, figsize=(17, 9))
-    bars = domain_presence.plot(kind='bar', ax=axes[0, 0], color=color, edgecolor='black')
+    bars = domain_presence.plot(kind='bar', ax=axes[0, 0], color=color, edgecolor='black', alpha=0.5)
     axes[0, 0].set_title('Domain Presence (%)', fontsize=16)
     axes[0, 0].set_ylabel('structures containing domain (%)', fontsize=16)
     axes[0, 0].set_yticklabels([f'{int(y)}' for y in axes[0, 0].get_yticks()], fontsize=14)
@@ -221,7 +221,7 @@ for i, frame in enumerate([df[df['chain'] == 'H'], df[df['chain'] == 'L']]):
                     }
     for i, title in enumerate(titles, start=1):
         row, col = divmod(i, 4)
-        hist = sns.histplot(frame['len'+title], bins=max_bins, ax=axes[row, col], stat='percent', kde=False, color=color, discrete=True)
+        hist = sns.histplot(frame['len'+title], bins=max_bins, ax=axes[row, col], stat='percent', kde=False, color=color, discrete=True, alpha=0.5)
         adjusted_x_axis_bounds = (x_axis_bounds[title][0] - 0.5, x_axis_bounds[title][1] + 0.5)
         axes[row, col].set_xlim(adjusted_x_axis_bounds)
         axes[row, col].set_title(f'{title} Length Distribution', fontsize=16)

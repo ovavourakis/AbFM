@@ -139,10 +139,13 @@ for chain_num, results in enumerate([(missing_o_combined, bb_breaks_combined, co
     bb_crosslinks_percentage.plot(kind='bar', ax=ax[chain_num][0], color=colour, alpha=0.5)
     ax[chain_num][0].bar_label(ax[chain_num][0].containers[0], fmt='%.0f', fontsize=12)
     ax[chain_num][0].set_ylim(0, 110)
-    ylab = 'Entire Fv' if chain_num == 0 else 'VH' if chain_num == 1 else 'VL'
+    ylab = 'Full Structure' if chain_num == 0 else 'Heavy Chain' if chain_num == 1 else 'Light Chain'
     ax[chain_num][0].set_ylabel(ylab, fontsize=18)
     if chain_num == 2:
         ax[chain_num][0].set_xlabel("total sequence length (AA)", fontsize=12)
+    else:
+        ax[chain_num][0].set_xlabel(" ", fontsize=1)
+
 
     if chain_num < 1:
         ax[chain_num][1].set_title(f"Chain Breaks", fontsize=14)
@@ -152,6 +155,8 @@ for chain_num, results in enumerate([(missing_o_combined, bb_breaks_combined, co
     ax[chain_num][1].set_ylabel("prevalence (% of structures)", fontsize=12)
     if chain_num == 2:
         ax[chain_num][1].set_xlabel("total sequence length (AA)", fontsize=12)
+    else:
+        ax[chain_num][1].set_xlabel(" ", fontsize=1)
 
     if chain_num < 1:
         ax[chain_num][2].set_title(f"Chain Breaks per Structure", fontsize=14)
@@ -161,6 +166,9 @@ for chain_num, results in enumerate([(missing_o_combined, bb_breaks_combined, co
     ax[chain_num][2].set_ylim(0, 0.35)
     if chain_num == 2:
         ax[chain_num][2].set_xlabel("total sequence length (AA)", fontsize=12)
+    else:
+        ax[chain_num][2].set_xlabel(" ", fontsize=1)
+
     for axis in ax[chain_num]:
         axis.tick_params(axis='x', rotation=0, labelsize=10)
 
