@@ -64,9 +64,13 @@ def create_full_prot(
         residue_index = np.arange(n)
         chain_index = np.zeros(n)
     else:
+        # given single index with residue jump 50 at chain break, re-index each chain starting at 1
         residue_index = res_idx
-        chain_index = np.where(residue_index <= 1000, 0, 1)
-        residue_index = np.where(residue_index <= 1000, residue_index, residue_index - 1000)
+        jump_location = np.where(np.diff(residue_index) == 50)[0][0] # 1, 2, ... [[20]] ->>> 70, 71 ...
+        heavy_chain_end = residue_index[jump_location]
+        light_chain_start = residue_index[jump_location + 1]
+        chain_index = np.where(residue_index <= heavy_chain_end, 0, 1)
+        residue_index = np.where(residue_index <= heavy_chain_end, residue_index, residue_index - 50 - heavy_chain_end + 1)
     
     if b_factors is None:
         b_factors = np.zeros([n, 37])

@@ -37,6 +37,8 @@ def ANARCIs_to_sequence(anarci_str_h, anarci_str_l):
          seq_len
         )
     '''
+
+    # TODO: not using the returned indices anywhere, just the seq_len maybe -> SIMPLIFY this function
          
     seqs_h, idx_h = ANARCI_to_sequence(anarci_str_h)
     seqs_l, idx_l = ANARCI_to_sequence(anarci_str_l)

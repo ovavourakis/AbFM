@@ -23,9 +23,9 @@ from Bio.PDB.PDBExceptions import PDBConstructionWarning
 import numpy as np
 import mdtraj as md
 
-from data import utils as du 
-from data import parsers
-from data import errors
+from data.preproc import utils as du 
+from data.preproc import parsers
+from data.preproc import errors
 from analysis.metrics import blobb_check, calculate_phi_psi_angles
 
 # Define the parser
@@ -151,7 +151,7 @@ def process_file(file_path: str, write_dir: str, rerun_blobb: bool = False):
             # get phi/psi angles by chain
             vh_angles, vl_angles = calculate_phi_psi_angles(structure)
 
-            # offset light-chain indices by 1000                                                # NOTE: index definition
+            # offset light-chain indices by 1000 (relative)                                     # NOTE: index definition
             modified_light_chain = Chain.Chain("L")
             offset = 1000
             for res in struct_chains['L']:

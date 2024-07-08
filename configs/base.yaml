@@ -101,7 +101,7 @@ experiment:                       # config for ModelRun
     translation_loss_weight: 2.0
     rotation_loss_weights: 0.3
     aux_loss_weight: 1.0          # in relation to rototrans-losses considered together
-    aux_loss_t_pass: 0.75          # use auxiliary losses from t in [k,1]; 0<k<1
+    aux_loss_t_pass: 0.75         # use auxiliary losses from t in [k,1]; 0<k<1
     t_normalize_clip: 0.9         # clip loss normaliser 1/(1-min(t,0.9))
     bb_atom_scale: 0.1            # convert coordinates from Angstrom to nm
     trans_scale: 0.1              # convert coordinates from Angstrom to nm
@@ -130,7 +130,7 @@ experiment:                       # config for ModelRun
   optimizer:
     lr: 1e-4
   wandb:
-    name: aux75p_ft_rbl_seqclust_70ep_bs10
+    name: reljump50_aux75p_ft_rbl_newclust_nodataslipts_220ep_bs10_accum6_adaptlr0.2_3
     project: abfm
     save_code: True
     tags: []
