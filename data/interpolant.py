@@ -214,7 +214,7 @@ class Interpolant:
         num_res, num_batch = len_h + len_l, batch['len_h'].shape[0]
 
         idx_h = torch.arange(len_h, device=self._device) + 1
-        idx_l = torch.arange(len_l, device=self._device) + 1001
+        idx_l = torch.arange(len_l, device=self._device) + len_h + 50
         res_idx = torch.cat([idx_h, idx_l])
         chain_id = torch.cat([torch.zeros(len_h, device=self._device), torch.ones(len_l, device=self._device)])
 
