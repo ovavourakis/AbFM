@@ -143,7 +143,7 @@ experiment:                       # config for ModelRun
     deterministic: False          # allow PyTorch to use non-deterministic algorithms
     strategy: ddp
     check_val_every_n_epoch: 1
-    # val_check_interval: 1000      # validate every k batches of size batch_size (pre-gradient cumulation != gradient steps = global_step) 
+    # val_check_interval: 1000    # validate every k batches of size batch_size (pre-gradient cumulation != gradient steps = global_step) 
     accumulate_grad_batches: 6    # accumulate gradient over k batches (implemented independent of #GPUs)
   checkpointer:
     dirpath: ckpt/${experiment.wandb.project}/${experiment.wandb.name}/${now:%Y-%m-%d}_${now:%H-%M-%S}

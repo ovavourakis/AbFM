@@ -55,12 +55,13 @@ class FlowModel(nn.Module):
         node_mask = input_feats['res_mask']
         edge_mask = node_mask[:, None] * node_mask[:, :, None]
         node_idx = input_feats['res_idx']
+        chain_id = input_feats['chain_id']
         continuous_t = input_feats['t']
         trans_t = input_feats['trans_t']
         rotmats_t = input_feats['rotmats_t']
         
         # Initialize node and edge embeddings
-        init_node_embed = self.node_embedder(continuous_t, node_mask, node_idx)
+        init_node_embed = self.node_embedder(continuous_t, node_mask, node_idx, chain_id)
         if 'trans_sc' not in input_feats:
             trans_sc = torch.zeros_like(trans_t)
         else:

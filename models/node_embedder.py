@@ -9,11 +9,11 @@ class NodeEmbedder(nn.Module):
     def __init__(self, module_cfg):
         super(NodeEmbedder, self).__init__()
         self._cfg = module_cfg
-        self.c_s = self._cfg.c_s                        # node embedding size
+        self.c_s = self._cfg.c_s                        # final node embedding size
         self.c_pos_emb = self._cfg.c_pos_emb            # position embedding size
         self.c_timestep_emb = self._cfg.c_timestep_emb  # timestep embedding size
         self.linear = nn.Linear(
-            self._cfg.c_pos_emb + self._cfg.c_timestep_emb, self.c_s)
+            self._cfg.c_pos_emb + self._cfg.c_timestep_emb, self.c_s-1) # note the -1 !
 
     def embed_t(self, timesteps, mask):
         timestep_emb = get_time_embedding(
@@ -23,15 +23,24 @@ class NodeEmbedder(nn.Module):
         )[:, None, :].repeat(1, mask.shape[1], 1)
         return timestep_emb * mask.unsqueeze(-1)
 
-    def forward(self, timesteps, mask, pos):
-        # mask: [batch, n_res]
-        # pos: [batch, n_res]
+    def forward(self, timesteps, mask, pos, chain_id):
+        # mask:     [batch, n_res]
+        # pos:      [batch, n_res]
+        # chain_id: [batch, n_res]
         pos = pos.to(dtype=torch.float32).to(mask.device)
+        chain_id = chain_id.to(dtype=torch.float32).to(mask.device)
+
         # [batch, n_res, c_pos_emb]
         pos_emb = get_index_embedding(pos, self.c_pos_emb, max_len=2056)
         pos_emb = pos_emb * mask.unsqueeze(-1)
 
-        input_feats = [pos_emb]
-        input_feats.append(self.embed_t(timesteps, mask))
+        # [batch, n_res, c_timestep_emb]
+        t_emb = self.embed_t(timesteps, mask)
 
-        return self.linear(torch.cat(input_feats, dim=-1))
+        # [batch, n_res, c_s-1]
+        pos_t_emb = self.linear(torch.cat([pos_emb, t_emb], dim=-1))
+
+        # [batch, n_res, c_s]
+        node_emb = torch.cat([pos_t_emb, chain_id], dim=-1)
+        
+        return node_emb

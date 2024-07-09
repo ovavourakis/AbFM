@@ -362,7 +362,7 @@ class FlowModule(LightningModule):
         return self.interpolant.sample(len_batch, self.model)
 
     def split_batch_types(self, batch: Any):
-        if 'struc' in batch and 'gen' in batch: # from CombinedLoader
+        if 'struc' in batch and 'gen' in batch: # see data_module.py
             struc_batch, len_batch = batch['struc'], batch['gen']
         elif 'sample_id' in batch: # just generation parameters
             struc_batch, len_batch = None, batch

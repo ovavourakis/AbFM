@@ -64,12 +64,15 @@ class PdbDataset(Dataset):
 
         light_chain_offset = 50
         light_chain_res_idx = res_idx[light_chain_start:] - torch.min(res_idx[light_chain_start:]) + (heavy_chain_end + light_chain_offset)
+        
         res_idx = torch.cat([heavy_chain_res_idx, light_chain_res_idx], dim=0)
+        chain_id = torch.cat([torch.zeros(heavy_chain_res_idx.size(0)), torch.ones(light_chain_res_idx.size(0))], dim=0)
 
         return {
             'file': processed_file_path,
             'aatype': chain_feats['aatype'],
-            'res_idx': res_idx, # array; starting at 1 (VH) and 1001 (VL), preserving gaps
+            'res_idx': res_idx,     # array; starting at 1 (VH) and skipping by 50 for start of VL, preserving gaps
+            'chain_id': chain_id,   # array; 0 for heavy chain, 1 for light chain
             'rotmats_1': rotmats_1,
             'trans_1': trans_1,
             'res_mask': torch.tensor(processed_feats['bb_mask']).int(),

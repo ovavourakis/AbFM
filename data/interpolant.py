@@ -216,8 +216,11 @@ class Interpolant:
         idx_h = torch.arange(len_h, device=self._device) + 1
         idx_l = torch.arange(len_l, device=self._device) + 1001
         res_idx = torch.cat([idx_h, idx_l])
+        chain_id = torch.cat([torch.zeros(len_h, device=self._device), torch.ones(len_l, device=self._device)])
+
         res_mask = torch.ones(num_batch, num_res, device=self._device)
-        batch = {'res_idx': res_idx,    
+        batch = {'res_idx': res_idx,
+                 'chain_id': chain_id,
                  'res_mask': res_mask,
         }
         # start with a sample from the prior distribution
