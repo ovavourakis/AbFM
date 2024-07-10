@@ -41,6 +41,7 @@ class NodeEmbedder(nn.Module):
         pos_t_emb = self.linear(torch.cat([pos_emb, t_emb], dim=-1))
 
         # [batch, n_res, c_s]
+        chain_id = chain_id.unsqueeze(-1)
         node_emb = torch.cat([pos_t_emb, chain_id], dim=-1)
         
         return node_emb

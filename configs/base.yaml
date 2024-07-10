@@ -130,7 +130,7 @@ experiment:                       # config for ModelRun
   optimizer:
     lr: 1e-4
   wandb:
-    name: reljump50_aux75p_ft_rbl_newclust_nodataslipts_220ep_bs10_accum6_adaptlr0.2_3
+    name: reljump50+chainid_aux75p_ft_rbl_newclust_nodataslipts_220ep_bs10_accum6_adaptlr0.2_3
     project: abfm
     save_code: True
     tags: []
@@ -144,7 +144,7 @@ experiment:                       # config for ModelRun
     strategy: ddp
     check_val_every_n_epoch: 1
     # val_check_interval: 1000    # validate every k batches of size batch_size (pre-gradient cumulation != gradient steps = global_step) 
-    accumulate_grad_batches: 6    # accumulate gradient over k batches (implemented independent of #GPUs)
+    accumulate_grad_batches: 2    # accumulate gradient over k batches (implemented independent of #GPUs)
   checkpointer:
     dirpath: ckpt/${experiment.wandb.project}/${experiment.wandb.name}/${now:%Y-%m-%d}_${now:%H-%M-%S}
     save_last: True
