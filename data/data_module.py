@@ -191,7 +191,7 @@ class DistributedPdbBatchSampler(DistributedSampler):
         # apply shuffling and subsampling
         shuffled_dataset = full_dataset.iloc[indices]
 
-        # create length-homogenous batches of equal size batch_size
+        # create length-homogenous batches of equal size 'batch_size'
         batches = []
         for seq_len, len_df in shuffled_dataset.groupby('modeled_seq_len'):
             
