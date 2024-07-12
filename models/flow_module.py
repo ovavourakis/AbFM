@@ -57,7 +57,8 @@ class FlowModule(LightningModule):
                 old_shape = state_dict[k].shape         # [256, 256] or [256] (weights and biases)
                 new_shape = model_state_dict[k].shape   # [255, 256] or [255]
                 if old_shape != new_shape:
-                    state_dict[k] = state_dict[k][:new_shape[0], ...]
+                    # state_dict[k] = state_dict[k][:new_shape[0], ...]     # slice pre-trained weigths appropriately
+                    state_dict[k] = model_state_dict[k]                     # just initialise this layer from scratch
         self.load_state_dict(state_dict, strict=True)
      
     def configure_optimizers(self):

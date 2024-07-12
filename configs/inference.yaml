@@ -24,7 +24,7 @@ data:
 experiment:
   inference:
     output_dir: inference_outputs/
-    ckpt_path: /vols/opig/users/vavourakis/epoch=3-step=23648.ckpt #weights/published.ckpt 
+    ckpt_path: ckpt/abfm/reljump50+chainid_aux75p_ft_rbl_newclust_nodataslipts_220ep_bs10_accum6_adaptlr0.2_3/2024-07-09_16-35-51/epoch=32-step=25344.ckpt #weights/published.ckpt 
     name: run_${now:%Y-%m-%d}_${now:%H-%M}
     num_gpus: ${experiment.num_devices}                   # TODO: handle this in code
   wandb:
