@@ -24,9 +24,9 @@ class NodeEmbedder(nn.Module):
         return timestep_emb * mask.unsqueeze(-1)
 
     def forward(self, timesteps, mask, pos, chain_id):
-        # mask:     [batch, n_res]
-        # pos:      [batch, n_res]
-        # chain_id: [batch, n_res]
+        # mask:     [batch, n_res] or [nres]
+        # pos:      [batch, n_res] or [nres]
+        # chain_id: [batch, n_res] or [nres]
         pos = pos.to(dtype=torch.float32).to(mask.device)
         chain_id = chain_id.to(dtype=torch.float32).to(mask.device)
 
@@ -42,7 +42,8 @@ class NodeEmbedder(nn.Module):
 
         # [batch, n_res, c_s]
         chain_id = chain_id.unsqueeze(-1)
-        # print(pos_t_emb.shape, chain_id.shape)
+        if chain_id.dim() == 2: # if original shape was [nres]
+            chain_id = chain_id.unsqueeze(0)
         node_emb = torch.cat([pos_t_emb, chain_id], dim=-1)
         
         return node_emb
