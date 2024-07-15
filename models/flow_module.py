@@ -44,6 +44,35 @@ class FlowModule(LightningModule):
         self.validation_epoch_metrics, self.validation_epoch_samples = [], []
         self.test_epoch_metrics, self.test_epoch_samples = [], []
         self.save_hyperparameters() # saves to self.hparams (also in model checkpoints)
+
+    def on_load_checkpoint(self, checkpoint: dict) -> None:
+        """ 
+        The node embedder was modified, so that the pre-trained weights have a shape mismatch.
+        Initialise just that one component from scratch.
+        """
+        state_dict = checkpoint["state_dict"]
+        model_state_dict = self.state_dict()
+        
+        # Handle missing and unexpected keys
+        missing_keys = [
+            "model.node_embedder.linear.0.weight", "model.node_embedder.linear.0.bias",
+            "model.node_embedder.linear.2.weight", "model.node_embedder.linear.2.bias",
+            "model.node_embedder.linear.4.weight", "model.node_embedder.linear.4.bias",
+            "model.node_embedder.linear.5.weight", "model.node_embedder.linear.5.bias"
+        ]
+        unexpected_keys = [
+            "model.node_embedder.linear.weight", "model.node_embedder.linear.bias"
+        ]
+        
+        for key in missing_keys:
+            if key in model_state_dict:
+                state_dict[key] = model_state_dict[key]
+        
+        for key in unexpected_keys:
+            if key in state_dict:
+                del state_dict[key]
+        
+        self.load_state_dict(state_dict, strict=True)
     
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(params=self.model.parameters(),

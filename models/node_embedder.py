@@ -12,8 +12,18 @@ class NodeEmbedder(nn.Module):
         self.c_s = self._cfg.c_s                        # node embedding size
         self.c_pos_emb = self._cfg.c_pos_emb            # position embedding size
         self.c_timestep_emb = self._cfg.c_timestep_emb  # timestep embedding size
-        self.linear = nn.Linear(
-            self._cfg.c_pos_emb + self._cfg.c_timestep_emb, self.c_s)
+        
+        # NOTE: increased embedder size for larger proteins
+        # self.linear = nn.Linear(
+        #     self._cfg.c_pos_emb + self._cfg.c_timestep_emb, self.c_s)
+        self.linear = nn.Sequential(
+                nn.Linear(self._cfg.c_pos_emb + self._cfg.c_timestep_emb, self.c_s),
+                nn.ReLU(),
+                nn.Linear(self.c_s, self.c_s),
+                nn.ReLU(),
+                nn.Linear(self.c_s, self.c_s),
+                nn.LayerNorm(self.c_s),
+            )
 
     def embed_t(self, timesteps, mask):
         timestep_emb = get_time_embedding(
