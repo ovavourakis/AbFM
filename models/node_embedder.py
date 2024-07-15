@@ -13,7 +13,9 @@ class NodeEmbedder(nn.Module):
         self.c_pos_emb = self._cfg.c_pos_emb            # position embedding size
         self.c_timestep_emb = self._cfg.c_timestep_emb  # timestep embedding size
         self.linear = nn.Linear(
-            self._cfg.c_pos_emb + self._cfg.c_timestep_emb, self.c_s-1) # note the -1 !
+            self._cfg.c_pos_emb + self._cfg.c_timestep_emb, self.c_s)
+        
+        self.chain_idx_embed = nn.Linear(1, self.c_s)
 
     def embed_t(self, timesteps, mask):
         timestep_emb = get_time_embedding(
@@ -37,13 +39,16 @@ class NodeEmbedder(nn.Module):
         # [batch, n_res, c_timestep_emb]
         t_emb = self.embed_t(timesteps, mask)
 
-        # [batch, n_res, c_s-1]
+        # [batch, n_res, c_s]
         pos_t_emb = self.linear(torch.cat([pos_emb, t_emb], dim=-1))
 
         # [batch, n_res, c_s]
         chain_id = chain_id.unsqueeze(-1)
         if chain_id.dim() == 2: # if original shape was [nres]
             chain_id = chain_id.unsqueeze(0)
-        node_emb = torch.cat([pos_t_emb, chain_id], dim=-1)
+        chain_idx_emb = self.chain_idx_embed(chain_id)
+
+        # [batch, n_res, c_s]
+        node_emb = pos_t_emb + chain_idx_emb
         
         return node_emb

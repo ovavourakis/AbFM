@@ -46,20 +46,26 @@ class FlowModule(LightningModule):
         self.save_hyperparameters() # saves to self.hparams (also in model checkpoints)
 
     def on_load_checkpoint(self, checkpoint: dict) -> None:
-        """ 
-        The node embedder was modified, so that the pre-trained weights have a shape mismatch.
-        Here we just cut the pre-trained weights for that one layer down to size.
-        """
+        # """ 
+        # The node embedder was modified, so that the pre-trained weights have a shape mismatch.
+        # Here we just cut the pre-trained weights for that one layer down to size.
+        # """
         state_dict = checkpoint["state_dict"]
-        model_state_dict = self.state_dict()
-        for k in state_dict:
-            if k in model_state_dict:
-                old_shape = state_dict[k].shape         # [256, 256] or [256] (weights and biases)
-                new_shape = model_state_dict[k].shape   # [255, 256] or [255]
-                if old_shape != new_shape:
-                    # state_dict[k] = state_dict[k][:new_shape[0], ...]     # slice pre-trained weigths appropriately
-                    state_dict[k] = model_state_dict[k]                     # just initialise this layer from scratch
-        self.load_state_dict(state_dict, strict=True)
+        # model_state_dict = self.state_dict()
+        # for k in state_dict:
+        #     if k in model_state_dict:
+        #         old_shape = state_dict[k].shape         # [256, 256] or [256] (weights and biases)
+        #         new_shape = model_state_dict[k].shape   # [255, 256] or [255]
+        #         if old_shape != new_shape:
+        #             # state_dict[k] = state_dict[k][:new_shape[0], ...]     # slice pre-trained weigths appropriately
+        #             state_dict[k] = model_state_dict[k]                     # just initialise this layer from scratch
+        # self.load_state_dict(state_dict, strict=False)
+        
+        missing_keys = ["model.node_embedder.chain_idx_embed.weight", "model.node_embedder.chain_idx_embed.bias"]
+        for key in missing_keys:
+            if key not in state_dict:
+                state_dict[key] = self.state_dict()[key]
+        self.load_state_dict(state_dict, strict=False)
      
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(params=self.model.parameters(),
