@@ -44,6 +44,31 @@ class FlowModule(LightningModule):
         self.validation_epoch_metrics, self.validation_epoch_samples = [], []
         self.test_epoch_metrics, self.test_epoch_samples = [], []
         self.save_hyperparameters() # saves to self.hparams (also in model checkpoints)
+
+    def on_load_checkpoint(self, checkpoint: dict) -> None:
+        """ 
+        We added residual connections to the FlowModel.forward(), so some weights and layers
+        will mis-match the pre-trained checkpoint. Initialise those components from scratch.
+        """
+        state_dict = checkpoint["state_dict"]       # old model
+        model_state_dict = self.state_dict()        # current, untrained model
+
+        # add new components to checkpoint state dict with random init
+        for key in model_state_dict:
+            if key not in state_dict:
+                state_dict[key] = model_state_dict[key]
+        # remove superfluous components in checkpoint state dict
+        keys_to_remove = [key for key in state_dict if key not in model_state_dict]
+        for key in keys_to_remove:
+            del state_dict[key]
+        # initialise shape-mismatched, shared components randomly
+        for k in state_dict:
+            if k in model_state_dict:
+                old_shape = state_dict[k].shape
+                new_shape = model_state_dict[k].shape
+                if old_shape != new_shape:
+                    state_dict[k] = model_state_dict[k]
+        self.load_state_dict(state_dict, strict=True)
     
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(params=self.model.parameters(),

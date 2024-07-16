@@ -82,6 +82,7 @@ model:
     c_s: ${model.node_embed_size}
     c_z: ${model.edge_embed_size}
     c_hidden: 128
+    c_skip: 64
     no_heads: 8
     no_qk_points: 8
     no_v_points: 12

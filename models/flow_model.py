@@ -24,7 +24,12 @@ class FlowModel(nn.Module):
         for b in range(self._ipa_conf.num_blocks):
             self.trunk[f'ipa_{b}'] = ipa_pytorch.InvariantPointAttention(self._ipa_conf)
             self.trunk[f'ipa_ln_{b}'] = nn.LayerNorm(self._ipa_conf.c_s)
-            tfmr_in = self._ipa_conf.c_s
+            self.trunk[f'skip_embed_{b}'] = ipa_pytorch.Linear(
+                self._model_conf.node_embed_size,
+                self._ipa_conf.c_skip,
+                init="final"
+            )
+            tfmr_in = self._ipa_conf.c_s + self._ipa_conf.c_skip
             tfmr_layer = torch.nn.TransformerEncoderLayer(
                 d_model=tfmr_in,
                 nhead=self._ipa_conf.seq_tfmr_num_heads,
@@ -84,8 +89,13 @@ class FlowModel(nn.Module):
                 node_mask)
             ipa_embed *= node_mask[..., None]
             node_embed = self.trunk[f'ipa_ln_{b}'](node_embed + ipa_embed)
+            seq_tfmr_in = torch.cat([
+                node_embed, self.trunk[f'skip_embed_{b}'](init_node_embed)
+            ], dim=-1)
+
             seq_tfmr_out = self.trunk[f'seq_tfmr_{b}'](
-                node_embed, src_key_padding_mask=(1 - node_mask).bool())
+                seq_tfmr_in, src_key_padding_mask=(1 - node_mask).bool())
+            
             node_embed = node_embed + self.trunk[f'post_tfmr_{b}'](seq_tfmr_out)
             node_embed = self.trunk[f'node_transition_{b}'](node_embed)
             node_embed = node_embed * node_mask[..., None]
