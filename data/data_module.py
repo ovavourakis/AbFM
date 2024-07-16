@@ -43,33 +43,29 @@ class PdbDataset(Dataset):
         processed_feats = tree.map_structure(lambda x: x[min_idx:(max_idx+1)], 
                                              processed_feats)
 
+        # throw away VL
+        res_idx = torch.tensor(processed_feats['residue_index'])
+        light_chain_start = torch.argmax((res_idx >= 1000).int()).item()
+        res_idx = res_idx[:light_chain_start] - torch.min(res_idx[:light_chain_start])
+
         # run through OpenFold data transforms
         chain_feats = {
-            'aatype': torch.tensor(processed_feats['aatype']).long(),
-            'all_atom_positions': torch.tensor(processed_feats['atom_positions']).double(), # non-centred positions
-            'all_atom_mask': torch.tensor(processed_feats['atom_mask']).double()
+            'aatype': torch.tensor(processed_feats['aatype'])[res_idx].squeeze().long(),
+            'all_atom_positions': torch.tensor(processed_feats['atom_positions'])[res_idx,...].double(), # non-centred positions
+            'all_atom_mask': torch.tensor(processed_feats['atom_mask'])[res_idx,...].double()
         }
         chain_feats = data_transforms.atom37_to_frames(chain_feats)
         rigids_1 = rigid_utils.Rigid.from_tensor_4x4(chain_feats['rigidgroups_gt_frames'])[:, 0]
         rotmats_1 = rigids_1.get_rots().get_rot_mats()
         trans_1 = rigids_1.get_trans()
-        
-        # TODO: don't do this conversion here, do it whenever you pre-process the data
-        res_idx = torch.tensor(processed_feats['residue_index'])
-
-        # re-index residues starting at 1 (heavy chain) and 1001 (light chain), preserving gaps
-        light_chain_start = torch.argmax((res_idx >= 1000).int()).item()
-        heavy_chain_res_idx = res_idx[:light_chain_start] - torch.min(res_idx[:light_chain_start]) + 1
-        light_chain_res_idx = res_idx[light_chain_start:] - torch.min(res_idx[light_chain_start:]) + 1001
-        res_idx = torch.cat([heavy_chain_res_idx, light_chain_res_idx], dim=0)
 
         return {
             'file': processed_file_path,
             'aatype': chain_feats['aatype'],
-            'res_idx': res_idx, # array; starting at 1 (VH) and 1001 (VL), preserving gaps
+            'res_idx': res_idx, # array; starting at 0 for VH only
             'rotmats_1': rotmats_1,
             'trans_1': trans_1,
-            'res_mask': torch.tensor(processed_feats['bb_mask']).int(),
+            'res_mask': torch.tensor(processed_feats['bb_mask'])[res_idx,...].int(),
         }
 
     def __len__(self):
@@ -186,8 +182,11 @@ class DistributedPdbBatchSampler(DistributedSampler):
         shuffled_dataset = full_dataset.iloc[indices]
 
         # create length-homogenous batches of equal size batch_size
+        # first compute the vh length of each antibody
+        split_seqs = shuffled_dataset['full_seq'].str.split('/', expand=True)
+        shuffled_dataset['len_h'] = split_seqs[0].str.len()
         batches = []
-        for seq_len, len_df in shuffled_dataset.groupby('modeled_seq_len'):
+        for seq_len, len_df in shuffled_dataset.groupby('len_h'):
             
             # num of *complete* batches for *this* sequence-length
             # this will drop some structures in the incomplete last batch 

@@ -585,8 +585,7 @@ class IpaScore(nn.Module):
 
         self.unscale_pos = lambda x: x / ipa_conf.coordinate_scaling
         self.unscale_rigids = lambda x: x.apply_trans_fn(self.unscale_pos)
-        self.trunk = nn.ModuleDict()
-
+        self.trunk = nn.ModuleDict() 
         for b in range(ipa_conf.num_blocks):
             self.trunk[f'ipa_{b}'] = InvariantPointAttention(ipa_conf)
             self.trunk[f'ipa_ln_{b}'] = nn.LayerNorm(ipa_conf.c_s)

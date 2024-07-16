@@ -210,12 +210,11 @@ class Interpolant:
         This method is intended to be called on ab-parameter batches 
         during inference only. Each batch contains a single sample.
         """
-        len_h, len_l = batch['len_h'].item(), batch['len_l'].item()
-        num_res, num_batch = len_h + len_l, batch['len_h'].shape[0]
+        len_h = batch['len_h'].item()
+        num_res, num_batch = len_h, batch['len_h'].shape[0]
 
-        idx_h = torch.arange(len_h, device=self._device) + 1
-        idx_l = torch.arange(len_l, device=self._device) + 1001
-        res_idx = torch.cat([idx_h, idx_l])
+        idx_h = torch.arange(len_h, device=self._device)
+        res_idx = idx_h
         res_mask = torch.ones(num_batch, num_res, device=self._device)
         batch = {'res_idx': res_idx,    
                  'res_mask': res_mask,
