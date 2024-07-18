@@ -11,24 +11,23 @@ data:
   inference:
     samples:                                  # config for antibodies to generate
       seed: 123                               # determines random length combos chosen for tot_length
-      min_length: 215
+      csv_path: ./ab_processed_newclust/metadata.csv # reference dataset from which to re-construct length-distributions of VH, VL
+      min_length: 215                         # hard filters to apply before constructing the reference PMF
       max_length: 260
       min_length_heavy: 109
       max_length_heavy: 145
       min_length_light: 99
       max_length_light: 121
-      samples_per_length: 4
-      length_step: 1
-      length_list: null                       # explicit list of lengths at which to generate
-      overwrite: False
+      num_combos: 100                         # number of unique VH/VL-length combinations to sample
+      num_samples_per_combo: 2                
 experiment:
   inference:
     output_dir: inference_outputs/
-    ckpt_path: /vols/opig/users/vavourakis/epoch=3-step=23648.ckpt #weights/published.ckpt 
+    ckpt_path: /vols/opig/users/vavourakis/newclust_ckpt/epoch=184-step=142080.ckpt #weights/published.ckpt 
     name: run_${now:%Y-%m-%d}_${now:%H-%M}
     num_gpus: ${experiment.num_devices}                   # TODO: handle this in code
   wandb:
-    name: phoenix1_inference
+    name: new_sample
     project: abfm
     save_code: True
     tags: []
