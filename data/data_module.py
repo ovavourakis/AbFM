@@ -123,9 +123,11 @@ class LengthDataset(Dataset):
             if h+l >= samples_cfg.min_length and h+l <= samples_cfg.max_length and (h,l) not in combos:
                 combos.add((h,l))   
         
+        sample_id = -1
         all_sample_ids = []
         for combo in combos:
-            for sample_id in range(samples_cfg.num_samples_per_combo):
+            for i in range(samples_cfg.num_samples_per_combo):
+                sample_id += 1
                 all_sample_ids.append((combo[0], combo[1], sample_id))
         self._all_sample_ids = all_sample_ids
 
