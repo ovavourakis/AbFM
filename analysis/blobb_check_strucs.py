@@ -8,8 +8,8 @@ Prints some synoptic statistics and outouts a plot of the
 distribution of these problems across different total lengths
 in the dataset.
 
-Usage: 
-python blobb_check_strucs.py --num_processes 8 --pdb_dir /vols/opig/users/vavourakis/generations/ftnl_auxloss_lastquarter_inference --rerun_check
+Usage:
+python blobb_check_strucs.py --num_processes 8 --pdb_dir /vols/opig/users/vavourakis/generations/vh_only --rerun_check
 """
 
 import os, argparse
@@ -73,8 +73,10 @@ df = pd.DataFrame({
 })
 df["bb_bad_links"] = df["bb_bad_links"].astype(int)
 
-bins = [min(df["total_residues"])-1, 220, 230, 240, 250, max(df["total_residues"])+1]
-labels = ["<220", "220-230", "230-240", "240-250", ">250"]
+min_residues = df["total_residues"].min()
+max_residues = df["total_residues"].max()
+bins = pd.cut(df["total_residues"], bins=5, retbins=True)[1]
+labels = [f"{int(bins[i])}-{int(bins[i+1])}" for i in range(len(bins)-1)]
 df['residue_bins'] = pd.cut(df['total_residues'], bins=bins, labels=labels, right=False)
 
 bb_crosslinks_percentage = df.groupby('residue_bins')['bb_bad_links'].mean() * 100

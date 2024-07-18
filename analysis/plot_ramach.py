@@ -33,7 +33,7 @@ out_dir = gen_dir
 
 print("Loading reference data...")
 vh_ref_angles = pd.read_csv(os.path.join(ref_dir, "vh_angles_train_val_test.csv")).sample(frac=0.005, random_state=42).apply(tuple, axis=1).tolist()
-vl_ref_angles = pd.read_csv(os.path.join(ref_dir, "vl_angles_train_val_test.csv")).sample(frac=0.005, random_state=42).apply(tuple, axis=1).tolist()
+# vl_ref_angles = pd.read_csv(os.path.join(ref_dir, "vl_angles_train_val_test.csv")).sample(frac=0.005, random_state=42).apply(tuple, axis=1).tolist()
 
 print("Loading sample data...")
 all_file_paths = [os.path.join(root, file) for root, dirs, files in os.walk(gen_dir) for file in files if file == "sample.pdb"]
@@ -54,14 +54,14 @@ overlay_ramachandran(chain_1_angles_all_models, vh_ref_angles,
                      title='VH Ramachandran Densities', 
                      color='b', labels=['Generated', 'Trainset'],
                      fname=os.path.join(out_dir, 'ramachandran_VH.png'))
-print("... VL")
-overlay_ramachandran(chain_2_angles_all_models, vl_ref_angles,
-                    title='VL Ramachandran Densities',
-                    color='r', labels=['Generated', 'Trainset'],
-                    fname=os.path.join(out_dir, 'ramachandran_VL.png'))
-print("... Fv")
-overlay_ramachandran(chain_1_angles_all_models + chain_2_angles_all_models,
-                     vh_ref_angles + vl_ref_angles,
-                    title='Fv Ramachandran Densities',
-                    color='g', labels=['Generated', 'Trainset'],
-                    fname=os.path.join(out_dir, 'ramachandran_Fv.png'))
+# print("... VL")
+# overlay_ramachandran(chain_2_angles_all_models, vl_ref_angles,
+#                     title='VL Ramachandran Densities',
+#                     color='r', labels=['Generated', 'Trainset'],
+#                     fname=os.path.join(out_dir, 'ramachandran_VL.png'))
+# print("... Fv")
+# overlay_ramachandran(chain_1_angles_all_models + chain_2_angles_all_models,
+#                      vh_ref_angles + vl_ref_angles,
+#                     title='Fv Ramachandran Densities',
+#                     color='g', labels=['Generated', 'Trainset'],
+#                     fname=os.path.join(out_dir, 'ramachandran_Fv.png'))

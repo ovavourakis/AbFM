@@ -76,7 +76,8 @@ if args.rerun_annotation:
                 seq_id += 1
 
                 sequences = [ (f'H', str(record.seq).split("/")[0]), 
-                            (f'L', str(record.seq).split("/")[1]) ]
+                            # (f'L', str(record.seq).split("/")[1]) 
+                ]
                 numbering, alignment_details, hit_tables = anarci(sequences, scheme="imgt", output=False)
 
                 for seq in range(len(sequences)):
@@ -126,8 +127,9 @@ titles = ['Percent Successfully \n Numbered', 'Percent Recognised as \n Single-D
 chain_labels = ['Heavy Chain', 'Light Chain']
 
 for i, (title, frame) in enumerate([('Heavy-Chain Stats:', df[df['chain'] == 'H'].copy()), 
-                                    ('Light-Chain Stats:', df[df['chain'] == 'L'].copy()),
-                                    ('All-Chain Stats:', df)]):
+                                    # ('Light-Chain Stats:', df[df['chain'] == 'L'].copy()),
+                                    # ('All-Chain Stats:', df)
+                        ]):
     
     # calculate and print global stats
     pc_numbered = 100 - frame['numbering_failure'].sum() / len(frame) * 100
@@ -141,7 +143,7 @@ for i, (title, frame) in enumerate([('Heavy-Chain Stats:', df[df['chain'] == 'H'
     print(f'% human:\t\t {pc_human:.2f}%')
     print(f'% correct chain type:\t {pc_correct_type:.2f}%')
 
-    if i in [0, 1]:
+    if i in [0]:
         # bin sequence lengths
         bins = np.linspace(min(frame["seq_len"]), max(frame["seq_len"])+1, 6)
         labels = [f'{int(bins[j])}-{int(bins[j+1])}' for j in range(len(bins)-1)]
@@ -186,8 +188,10 @@ region_counts.columns = ['lenFR1', 'lenCDR1', 'lenFR2', 'lenCDR2', 'lenFR3', 'le
 df = pd.concat([df, region_counts], axis=1)
 
 hc_df = df[df['chain'] == 'H']
-lc_df = df[df['chain'] == 'L']
-for i, frame in enumerate([df[df['chain'] == 'H'], df[df['chain'] == 'L']]):
+# lc_df = df[df['chain'] == 'L']
+for i, frame in enumerate([df[df['chain'] == 'H'], 
+                        #    df[df['chain'] == 'L']
+                ]):
     ctype = 'H' if i == 0 else 'L'
     color = '#f08080' if ctype == 'L' else '#add8e6'
 
