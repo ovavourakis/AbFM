@@ -22,7 +22,7 @@ data:
       num_samples_per_combo: 2                
 experiment:
   inference:
-    output_dir: inference_outputs/
+    output_dir: inference_outputs_newsample/
     ckpt_path: /vols/opig/users/vavourakis/newclust_ckpt/epoch=184-step=142080.ckpt #weights/published.ckpt 
     name: run_${now:%Y-%m-%d}_${now:%H-%M}
     num_gpus: ${experiment.num_devices}                   # TODO: handle this in code
