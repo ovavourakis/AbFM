@@ -15,6 +15,7 @@ should be structured as follows:
             - <structure_name>.fa
 Usage:
     python number_ab_seqs.py --gen_dir <path_to_root_of_generated_structures_and_seqs> [--rerun_annotation]
+    python number_ab_seqs.py --gen_dir /vols/opig/users/vavourakis/generations/NEWCLUST_newsample --rerun_annotation
 
 Arguments:
     --gen_dir: Path to the directory containing generated structures and sequences.

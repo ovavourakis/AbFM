@@ -9,7 +9,7 @@ distribution of these problems across different total lengths
 in the dataset.
 
 Usage: 
-python blobb_check_by_chain.py --num_processes 8 --pdb_dir /vols/opig/users/vavourakis/generations/NEWCLUST_last --rerun_check
+python blobb_check_by_chain.py --num_processes 8 --pdb_dir /vols/opig/users/vavourakis/generations/NEWCLUST_newsample --rerun_check
 """
 
 import os, argparse

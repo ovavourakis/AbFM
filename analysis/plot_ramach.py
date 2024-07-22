@@ -7,7 +7,7 @@ Relies on pre-computed phi-psi values for the reference set stored in
 vh_angles_train_val_test.csv and vl_angles_train_val_test.csv.
 
 Usage:
-python plot_ramach.py --gen_dir /vols/opig/users/vavourakis/generations/new_dl_pre_crash_epoch3
+python plot_ramach.py --gen_dir /vols/opig/users/vavourakis/generations/NEWCLUST_newsample
 """
 
 import os, warnings, argparse

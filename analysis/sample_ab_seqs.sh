@@ -25,7 +25,7 @@ source ~/.bashrc
 conda activate fm
 
 echo 'Copying and renaming samples...'
-generations="/vols/opig/users/vavourakis/generations/reljump"
+generations="/vols/opig/users/vavourakis/generations/NEWCLUST_newsample"
 folder_with_pdbs=$generations"/designed_seqs"
 if [ ! -d $folder_with_pdbs ] 
 then
