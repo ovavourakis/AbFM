@@ -79,48 +79,67 @@ class PdbDataset(Dataset):
         return chain_feats
     
 class LengthDataset(Dataset):
-    """
-    Dummy dataset of just antibody params from which to
+    """ Dummy dataset of just antibody params from which to
     generate de novo samples. Each param has the form 
     (num_res_heavy, num_res_light, sample_id).
 
     Entries are created based on a samples configuration passed
     to the constructor. 
 
-    Chain length combinations are sampled uniformly from the set 
-    of all permissible combinations such that the total length
-    does not exceed max_length or fall below min_length
-    (see config).
-    """
+    We frist apply hard length-filters to a reference dataset (e.g. the training set),
+    both on single chains and total length. We then sample chain-lengths independently,
+    from the middle 95% of the respective empirical distributions in the filtered 
+    reference set, until we have a pre-set number of unique combinations.
+
+    We then add a pre-set number of repeats of each combination to our dummy dataset. """
+
     def __init__(self, samples_cfg):
         self._samples_cfg = samples_cfg
         random.seed(samples_cfg.seed)
-
-        if samples_cfg.length_list is not None:
-            all_sample_lengths = [int(x) for x in samples_cfg.length_list]
-        else:
-            all_sample_lengths = range(self._samples_cfg.min_length,
-                                       self._samples_cfg.max_length+1,
-                                       self._samples_cfg.length_step
-            )
-        # all permissible light/heavy-chain length combinations per total length
-        self.length_combos = {}
-        for len_h in range(self._samples_cfg.min_length_heavy, self._samples_cfg.max_length_heavy + 1):
-            for len_l in range(self._samples_cfg.min_length_light, self._samples_cfg.max_length_light + 1):
-                total_length = len_h + len_l
-                if self._samples_cfg.min_length <= total_length <= self._samples_cfg.max_length:
-                    if total_length not in self.length_combos:
-                        self.length_combos[total_length] = []
-                    self.length_combos[total_length].append((len_h, len_l))
         
-        # sample length combos for each length
+        # read in reference dataset on which to base sampling distribution
+        df = pd.read_csv(samples_cfg.csv_path)
+        seqs = df['full_seq'].str.split('/', expand=True)
+        df['len_h'], df['len_l'] = seqs[0].str.len(), seqs[1].str.len()
+        df['len_tot'] = df['len_h'] + df['len_l']
+        # apply hard filters
+        df = df[(df['len_tot'] <= samples_cfg.max_length) & (df['len_tot'] >= samples_cfg.min_length)]
+        df = df[(df['len_h'] <= samples_cfg.max_length_heavy) & (df['len_h'] >= samples_cfg.min_length_heavy)]
+        df = df[(df['len_l'] <= samples_cfg.max_length_light) & (df['len_l'] >= samples_cfg.min_length_light)]
+
+        # reconstruct middle 95% of VH and VL length distros from reference dataset
+        lengths_h, probabilities_h = self.get_valid_lens_probs(df, 'len_h')
+        lengths_l, probabilities_l = self.get_valid_lens_probs(df, 'len_l')
+
+        # sample a set number of unique VH/VL-length combinations
+        combos = set()
+        while len(combos) < samples_cfg.num_combos:
+            h = np.random.choice(lengths_h, p=probabilities_h)
+            l = np.random.choice(lengths_l, p=probabilities_l)
+            if h+l >= samples_cfg.min_length and h+l <= samples_cfg.max_length and (h,l) not in combos:
+                combos.add((h,l))   
+        
+        sample_id = -1
         all_sample_ids = []
-        for length in all_sample_lengths:
-            len_combos = random.choices(self.length_combos[length], 
-                                        k=self._samples_cfg.samples_per_length)
-            for sample_id, len_combo in enumerate(len_combos):
-                all_sample_ids.append((len_combo[0], len_combo[1], sample_id))
+        for combo in combos:
+            for i in range(samples_cfg.num_samples_per_combo):
+                sample_id += 1
+                all_sample_ids.append((combo[0], combo[1], sample_id))
         self._all_sample_ids = all_sample_ids
+
+    def get_valid_lens_probs(self, df, column='len_h'):
+        """ Take lengths of individual chain (VH or VL) in reference dataset.
+        Return lengths within the middle 95% of that distribution and their probabilities. """
+        lengths, counts = np.unique(df[column], return_counts=True)
+        probabilities = counts / counts.sum()
+
+        cumulative_probabilities = np.cumsum(probabilities)
+        valid_mask = (cumulative_probabilities >= 0.025) & (cumulative_probabilities <= 0.975)
+
+        lengths = lengths[valid_mask]
+        probabilities = probabilities[valid_mask]/probabilities[valid_mask].sum()
+
+        return lengths, probabilities
 
     def __len__(self):
         return len(self._all_sample_ids)
