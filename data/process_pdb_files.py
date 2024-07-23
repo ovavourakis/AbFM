@@ -68,10 +68,12 @@ def process_file(file_path: str, write_dir: str):
     parser = PDB.PDBParser(QUIET=True)
     structure = parser.get_structure(pdb_name, file_path)
 
-    # Extract all chains
-    struct_chains = {
+    # Only get the first chain in structure, which should be labelled H
+    struct_chains = { 
         chain.id.upper(): chain
-        for chain in structure.get_chains()}
+        for chain in structure.get_chains() if chain.id.upper() == 'H' }
+    if not struct_chains:
+        raise ValueError("Chain 'H' not found in the structure.")
     metadata['num_chains'] = len(struct_chains)
 
     # Extract features
