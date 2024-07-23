@@ -213,7 +213,7 @@ class Interpolant:
         len_h = batch['len_h'].item()
         num_res, num_batch = len_h, batch['len_h'].shape[0]
 
-        idx_h = torch.arange(len_h, device=self._device)
+        idx_h = torch.arange(len_h, device=self._device) + 1
         res_idx = idx_h
         res_mask = torch.ones(num_batch, num_res, device=self._device)
         batch = {'res_idx': res_idx,    
