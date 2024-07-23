@@ -34,7 +34,7 @@ class PdbDataset(Dataset):
     def _process_csv_row(self, processed_file_path):
         '''Load and process a single row of the PDB CSV file.'''
         processed_feats = du.read_pkl(processed_file_path)
-        processed_feats = du.parse_chain_feats(processed_feats)
+        processed_feats = du.parse_chain_feats(processed_feats)                                 # NOTE: pkl should already contain all that is neccessary and be scaled and centred - unneccesary?
 
         # only take modeled residues (natural AAs, not others)
         modeled_idx = processed_feats['modeled_idx']
@@ -44,15 +44,15 @@ class PdbDataset(Dataset):
                                              processed_feats)
 
         # throw away VL
-        res_idx = torch.tensor(processed_feats['residue_index'])
+        res_idx = torch.tensor(processed_feats['residue_index'])                           
         light_chain_start = torch.argmax((res_idx >= 1000).int()).item()
-        res_idx = res_idx[:light_chain_start] - torch.min(res_idx[:light_chain_start])
+        res_idx = res_idx[:light_chain_start] - torch.min(res_idx[:light_chain_start]) + 1
 
         # run through OpenFold data transforms
         chain_feats = {
-            'aatype': torch.tensor(processed_feats['aatype'])[res_idx].squeeze().long(),
-            'all_atom_positions': torch.tensor(processed_feats['atom_positions'])[res_idx,...].double(), # non-centred positions
-            'all_atom_mask': torch.tensor(processed_feats['atom_mask'])[res_idx,...].double()
+            'aatype': torch.tensor(processed_feats['aatype'])[:light_chain_start].squeeze().long(),
+            'all_atom_positions': torch.tensor(processed_feats['atom_positions'])[:light_chain_start,...].double(), # non-centred positions
+            'all_atom_mask': torch.tensor(processed_feats['atom_mask'])[:light_chain_start,...].double()
         }
         chain_feats = data_transforms.atom37_to_frames(chain_feats)
         rigids_1 = rigid_utils.Rigid.from_tensor_4x4(chain_feats['rigidgroups_gt_frames'])[:, 0]
@@ -62,7 +62,7 @@ class PdbDataset(Dataset):
         return {
             'file': processed_file_path,
             'aatype': chain_feats['aatype'],
-            'res_idx': res_idx, # array; starting at 0 for VH only
+            'res_idx': res_idx, # array; starting at 1 for VH only, potentially discontinuous
             'rotmats_1': rotmats_1,
             'trans_1': trans_1,
             'res_mask': torch.tensor(processed_feats['bb_mask'])[res_idx,...].int(),
