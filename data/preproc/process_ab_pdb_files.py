@@ -7,7 +7,7 @@ Requires a pre-filtered CSV file with PDB paths and metadata
 (produced by pre_filter_ab_data.py).
 
 Usage:
-python process_ab_pdb_files.py --pdb_dir /vols/opig/users/vavourakis/data/OAS_models/structures --csv_path /vols/opig/users/vavourakis/data/OAS_models/OAS_paired_filtered_newclust.csv --num_processes 8 --write_dir /vols/opig/users/vavourakis/data/ab_processed_newclust --rerun_blobb
+python process_ab_pdb_files.py --pdb_dir /vols/opig/users/vavourakis/data/new_OAS_models/structures --csv_path /vols/opig/users/vavourakis/data/new_OAS_models/OAS_paired_filtered_newclust.csv --num_processes 8 --write_dir /vols/opig/users/vavourakis/data/ab_processed_newclust_newindex --rerun_blobb
 """
 
 import argparse
@@ -151,19 +151,24 @@ def process_file(file_path: str, write_dir: str, rerun_blobb: bool = False):
             # get phi/psi angles by chain
             vh_angles, vl_angles = calculate_phi_psi_angles(structure)
 
-            # offset light-chain indices by 1000 (relative)                                     # NOTE: index definition
-            modified_light_chain = Chain.Chain("L")
-            offset = 1000
-            for res in struct_chains['L']:
-                new_id = (res.id[0], res.id[1] + offset, res.id[2])
-                modified_res = Residue.Residue(new_id, res.resname, res.segid)
-                for atom in res:
-                    modified_res.add(atom)
-                modified_light_chain.add(modified_res)
+            # re-index residues starting at 1 and 1001 for VH, Vl, respectively                 # NOTE: index definition
+            for chain_id in ['H', 'L']:
+                chain = struct_chains[chain_id]
+                new_chain = Chain.Chain(chain_id)
+                for i, res in enumerate(chain, start=1):
+                    if chain_id == "H":
+                        new_id = (res.id[0], i, res.id[2])
+                    else:
+                        new_id = (res.id[0], i+1000, res.id[2])
+                    new_res = Residue.Residue(new_id, res.resname, res.segid)
+                    for atom in res:
+                        new_res.add(atom)
+                    new_chain.add(new_res)
+                struct_chains[chain_id] = new_chain
             
-            # merge modified light chain and heavy chain into a single chain
+            # merge VH, VL into a single chain with discontinuous index
             merged_chain = Chain.Chain("M")
-            for chain in [struct_chains['H'], modified_light_chain]:
+            for chain in [struct_chains['H'], struct_chains['L']]:
                 for res in chain:
                     merged_chain.add(res)
             struct_chains = {"M": merged_chain}

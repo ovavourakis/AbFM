@@ -54,19 +54,13 @@ class PdbDataset(Dataset):
         rotmats_1 = rigids_1.get_rots().get_rot_mats()
         trans_1 = rigids_1.get_trans()
         
-        # re-index residues starting at 1 (VH) and jumping by 50 at start of VL, preserving gaps
-        # (VL indices currently offset by 1000 from process_ab_pdb_files)
-        # TODO: don't do this conversion here, do it whenever you pre-process the data
         res_idx = torch.tensor(processed_feats['residue_index'])
-        light_chain_start = torch.argmax((res_idx >= 1000).int()).item()
-        heavy_chain_res_idx = res_idx[:light_chain_start] - torch.min(res_idx[:light_chain_start]) + 1
-        heavy_chain_end = heavy_chain_res_idx[-1].item()
 
-        light_chain_offset = 50
-        light_chain_res_idx = res_idx[light_chain_start:] - torch.min(res_idx[light_chain_start:]) + (heavy_chain_end + light_chain_offset)
-        
-        res_idx = torch.cat([heavy_chain_res_idx, light_chain_res_idx], dim=0)
-        chain_id = torch.cat([torch.zeros(heavy_chain_res_idx.size(0)), torch.ones(light_chain_res_idx.size(0))], dim=0)
+        # # re-index residues starting at 1 (heavy chain) and 1001 (light chain), preserving gaps
+        # light_chain_start = torch.argmax((res_idx >= 1000).int()).item()
+        # heavy_chain_res_idx = res_idx[:light_chain_start] - torch.min(res_idx[:light_chain_start]) + 1
+        # light_chain_res_idx = res_idx[light_chain_start:] - torch.min(res_idx[light_chain_start:]) + 1001
+        # res_idx = torch.cat([heavy_chain_res_idx, light_chain_res_idx], dim=0)
 
         return {
             'file': processed_file_path,
