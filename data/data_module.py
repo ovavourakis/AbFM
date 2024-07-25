@@ -56,16 +56,10 @@ class PdbDataset(Dataset):
         
         res_idx = torch.tensor(processed_feats['residue_index'])
 
-        # # re-index residues starting at 1 (heavy chain) and 1001 (light chain), preserving gaps
-        # light_chain_start = torch.argmax((res_idx >= 1000).int()).item()
-        # heavy_chain_res_idx = res_idx[:light_chain_start] - torch.min(res_idx[:light_chain_start]) + 1
-        # light_chain_res_idx = res_idx[light_chain_start:] - torch.min(res_idx[light_chain_start:]) + 1001
-        # res_idx = torch.cat([heavy_chain_res_idx, light_chain_res_idx], dim=0)
-
         return {
             'file': processed_file_path,
             'aatype': chain_feats['aatype'],
-            'res_idx': res_idx, # array; starting at 1 (VH) and 1001 (VL), preserving gaps
+            'res_idx': res_idx, # array; starting at 1 (VH) and 1001 (VL), chain-wise sequential
             'rotmats_1': rotmats_1,
             'trans_1': trans_1,
             'res_mask': torch.tensor(processed_feats['bb_mask']).int(),
