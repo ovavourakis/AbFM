@@ -217,7 +217,7 @@ for i, frame in enumerate([df[df['chain'] == 'H'],
     max_bins = max(frame['len'+title].nunique() for title in titles)
     x_axis_bounds = {   'CDR1': (5, 21),
                         'CDR2': (2, 18),
-                        'CDR3': (0, 16),
+                        'CDR3': (3, 26),
                         'FR1': (19, 35),
                         'FR2': (8, 24),
                         'FR3': (28, 44),
