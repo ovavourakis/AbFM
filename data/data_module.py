@@ -56,7 +56,7 @@ class PdbDataset(Dataset):
         
         res_idx = torch.tensor(processed_feats['residue_index'])
 
-        # re-index residues starting at 1 (VH) and jumping by 50 at start of VL, preserving gaps
+        # re-index residues starting at 1 (VH) and jumping by 50 at start of VL
         # (VL indices currently start at by 1001 from process_ab_pdb_files)
         light_chain_start = torch.argmax((res_idx >= 1000).int()).item()
         heavy_chain_res_idx = res_idx[:light_chain_start] - torch.min(res_idx[:light_chain_start]) + 1
@@ -66,7 +66,7 @@ class PdbDataset(Dataset):
         res_idx = torch.cat([heavy_chain_res_idx, light_chain_res_idx], dim=0)
         chain_id = torch.cat([torch.zeros(heavy_chain_res_idx.size(0)), torch.ones(light_chain_res_idx.size(0))], dim=0)
 
-        # alternative to implement danid with absolute jump
+        # alternative to implement danid with absolute jump -> would also need to change interpolant
         # light_chain_start = torch.argmax((res_idx >= 1000).int()).item()
         # chain_id = torch.zeros(len(res_idx))
         # chain_id[light_chain_start:] = 1
