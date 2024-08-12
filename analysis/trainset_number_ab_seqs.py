@@ -128,8 +128,6 @@ chain_labels = ['Heavy Chain', 'Light Chain']
 for i, (title, frame) in enumerate([('Heavy-Chain Stats:', df[df['chain'] == 'H'].copy()), 
                                     ('Light-Chain Stats:', df[df['chain'] == 'L'].copy()),
                                     ('All-Chain Stats:', df)]):
-    if i == 1:
-        print(frame.seq)
     
     # calculate and print global stats
     pc_numbered = 100 - frame['numbering_failure'].sum() / len(frame) * 100

@@ -8,7 +8,7 @@ from the filtered dataset and removes extremal combinations. Finally, it samples
 VH/VL-length combinations based on the reconstructed distributions, 
 if the sampled combination exists in the reference set.
 
-This mimics the sampling process during de novo generation and is used to derive comparator property distirbutions.
+This mimics the sampling process during de novo generation and is used to derive comparator property distributions.
 
 Globals:
     metadata_csv (str): Path to the CSV file containing the reference dataset.
