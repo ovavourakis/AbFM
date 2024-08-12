@@ -30,9 +30,7 @@ then
 fi
 
 echo 'Sub-sampling training set structures...'
-awk -F "," '{print $3}' $metadata > $folder_with_pdbs'/pdb_paths.txt'                   # extract pdb paths from csv
-shuf -n 2000 $folder_with_pdbs'/pdb_paths.txt' > $folder_with_pdbs'/random2kpdbs.txt'   # sub-sample a random 2k
-rm -f $folder_with_pdbs'/pdb_paths.txt'
+python trainset_lencombo_sampler.py --metadata_csv $metadata > $folder_with_pdbs'/random2kpdbs.txt'
 
 echo 'Copying samples...'
 xargs -a $folder_with_pdbs'/random2kpdbs.txt' -I {} cp {} $folder_with_pdbs
