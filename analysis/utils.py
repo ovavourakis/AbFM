@@ -11,6 +11,58 @@ import seaborn as sns
 
 Rigid = rigid_utils.Rigid
 
+from Bio import PDB
+from Bio.PDB import Chain, Residue
+from Bio.PDB.PDBExceptions import PDBConstructionWarning
+
+def get_valid_lens_probs(df, column='len_h'):
+        """ Take lengths of individual chain (VH or VL) in reference dataset.
+        Return lengths within the middle 95% of that distribution and their probabilities. """
+        lengths, counts = np.unique(df[column], return_counts=True)
+        probabilities = counts / counts.sum()
+
+        cumulative_probabilities = np.cumsum(probabilities)
+        valid_mask = (cumulative_probabilities >= 0.025) & (cumulative_probabilities <= 0.975)
+
+        lengths = lengths[valid_mask]
+        probabilities = probabilities[valid_mask]/probabilities[valid_mask].sum()
+
+        return lengths, probabilities
+
+def renumber_pdbs(input_path, output_path):
+    parser = PDB.PDBParser(QUIET=True)
+    io = PDB.PDBIO()
+
+    for pdb_file in tqdm(os.listdir(input_path)):
+        if pdb_file.endswith(".pdb"):
+
+            structure = parser.get_structure(pdb_file, os.path.join(input_path, pdb_file))
+            struct_chains = {chain.id.upper() : chain for chain in structure.get_chains()}
+
+            # re-index residues sequentially
+            for chain_id in ['H', 'L']:
+                chain = struct_chains[chain_id]
+                new_chain = Chain.Chain(chain_id)
+                for i, res in enumerate(chain, start=1):
+                    new_id = (res.id[0], i, res.id[2])
+                    new_res = Residue.Residue(new_id, res.resname, res.segid)
+                    for atom in res:
+                        new_res.add(atom)
+                    new_chain.add(new_res)
+                struct_chains[chain_id] = new_chain
+
+            # overwrite original pdb file
+            new_structure = PDB.Structure.Structure(structure.id)
+            new_model = PDB.Model.Model(structure[0].id)
+            new_structure.add(new_model)
+            
+            for chain_id, new_chain in struct_chains.items():
+                new_model.add(new_chain)
+            
+            output_file = os.path.join(output_path, pdb_file)
+            io.set_structure(new_structure)
+            io.save(output_file)
+
 def plot_ramachandran(phi_psi_angles, title, plot_type="kde_fill", ax=None, color="r"):
     # phi_psi_angles is a single list of tuples (phi, psi)
     phi_angles = [phi * 180 / np.pi for phi, psi in phi_psi_angles if phi is not None]  # radians to degrees

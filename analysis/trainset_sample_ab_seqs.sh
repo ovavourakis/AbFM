@@ -35,6 +35,10 @@ python trainset_lencombo_sampler.py --metadata_csv $metadata > $folder_with_pdbs
 echo 'Copying samples...'
 xargs -a $folder_with_pdbs'/random2kpdbs.txt' -I {} cp {} $folder_with_pdbs
 
+# ProteinMPNN assumes that pdb-residues are sequentially numbered per chain.
+echo 'Re-numbering residues...'
+python trainset_renum_pdbs.py --input_path $folder_with_pdbs --output_path $folder_with_pdbs
+
 echo 'Running AbMPNN...'
 output_dir=$folder_with_pdbs
 path_for_parsed_chains=$output_dir"/parsed_pdbs.jsonl"

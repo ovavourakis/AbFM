@@ -13,8 +13,8 @@ should be structured as follows:
     - seqs/
         - <structure_name>.fa
 Usage:
-    python number_ab_seqs_trainset.py --gen_dir <path_to_root_of_generated_structures_and_seqs> [--rerun_annotation]
-    python number_ab_seqs_trainset.py --gen_dir /vols/opig/users/vavourakis/generations/TRAINSET --rerun_annotation
+    python trainset_number_ab_seqs.py --gen_dir <path_to_root_of_generated_structures_and_seqs> [--rerun_annotation]
+    python trainset_number_ab_seqs.py --gen_dir /vols/opig/users/vavourakis/generations/TRAINSET --rerun_annotation
 
 Arguments:
     --gen_dir: Path to the directory containing generated sequences.
@@ -128,6 +128,8 @@ chain_labels = ['Heavy Chain', 'Light Chain']
 for i, (title, frame) in enumerate([('Heavy-Chain Stats:', df[df['chain'] == 'H'].copy()), 
                                     ('Light-Chain Stats:', df[df['chain'] == 'L'].copy()),
                                     ('All-Chain Stats:', df)]):
+    if i == 1:
+        print(frame.seq)
     
     # calculate and print global stats
     pc_numbered = 100 - frame['numbering_failure'].sum() / len(frame) * 100
@@ -142,6 +144,7 @@ for i, (title, frame) in enumerate([('Heavy-Chain Stats:', df[df['chain'] == 'H'
     print(f'% correct chain type:\t {pc_correct_type:.2f}%')
 
     if i in [0, 1]:
+
         # bin sequence lengths
         bins = np.linspace(min(frame["seq_len"]), max(frame["seq_len"])+1, 6)
         # bins = np.linspace(min(frame["seq_len"]), max(frame["seq_len"])+1, 3)
