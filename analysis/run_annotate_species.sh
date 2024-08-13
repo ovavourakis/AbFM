@@ -71,6 +71,10 @@ biophi oasis "$seq_dir"/oasis_inputs.fa \
         --min-percent-subjects 1 \
         --summary
 
+xlsx2csv "$seq_dir"/oasis_humanness.xlsx > "$seq_dir"/oasis_humanness.csv
+rm -f "$seq_dir"/oasis_humanness.xlsx
 conda deactivate
 
-# TODO: plot the results
+echo "Plotting..."
+conda activate fm
+python plot_humanness.py --gen_dir "$gen_dir"
