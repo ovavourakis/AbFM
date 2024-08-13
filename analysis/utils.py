@@ -1,6 +1,6 @@
 import numpy as np
-import os
-import re
+import os, re
+from tqdm import tqdm
 from data import protein
 from openfold.utils import rigid_utils
 
@@ -28,6 +28,42 @@ def get_valid_lens_probs(df, column='len_h'):
         probabilities = probabilities[valid_mask]/probabilities[valid_mask].sum()
 
         return lengths, probabilities
+
+def extract_sequences_from_pdb(pdb_file):
+    
+    d3to1 = {'CYS': 'C', 'ASP': 'D', 'SER': 'S', 'GLN': 'Q', 'LYS': 'K',
+              'ILE': 'I', 'PRO': 'P', 'THR': 'T', 'PHE': 'F', 'ASN': 'N', 
+              'GLY': 'G', 'HIS': 'H', 'LEU': 'L', 'ARG': 'R', 'TRP': 'W', 
+              'ALA': 'A', 'VAL':'V', 'GLU': 'E', 'TYR': 'Y', 'MET': 'M'
+    }
+     
+    parser = PDB.PDBParser(QUIET=True)
+    structure = parser.get_structure(pdb_file, pdb_file)
+    assert len(structure) == 1, "Multiple models in PDB file."
+
+    seqs = []
+    for model in structure:
+        for chain in model:
+            seq = []
+            for res in chain:
+                if res.get_id()[0] == ' ':
+                    seq.append(d3to1[res.resname])
+            seqs.append("".join(seq))
+    assert len(seqs) == 2, "More than two chains in PDB file."
+
+    return '/'.join(seqs), os.path.basename(pdb_file).split(".")[0]
+
+def save_sequence_to_fasta(seq, pdb_id, output_path):
+    with open(os.path.join(output_path, f"{pdb_id}.fa"), 'w') as f:
+        f.write(f">{pdb_id}\n")
+        f.write("".join(seq))
+
+def extract_sequences_from_pdbs(input_path, output_path):
+    all_pdbs = [f for f in os.listdir(input_path) if f.endswith(".pdb")]
+    for pdb_file in tqdm(all_pdbs):
+        if pdb_file.endswith(".pdb"):
+            seq, pdb_id = extract_sequences_from_pdb(os.path.join(input_path, pdb_file))
+            save_sequence_to_fasta(seq, pdb_id, output_path)
 
 def renumber_pdbs(input_path, output_path):
     parser = PDB.PDBParser(QUIET=True)

@@ -37,7 +37,7 @@ xargs -a $folder_with_pdbs'/random2kpdbs.txt' -I {} cp {} $folder_with_pdbs
 
 # ProteinMPNN assumes that pdb-residues are sequentially numbered per chain.
 echo 'Re-numbering residues...'
-python trainset_renum_pdbs.py --input_path $folder_with_pdbs --output_path $folder_with_pdbs
+python trainset_proc_pdb_seqs.py --renumber --input_path $folder_with_pdbs --output_path $folder_with_pdbs
 
 echo 'Running AbMPNN...'
 output_dir=$folder_with_pdbs
