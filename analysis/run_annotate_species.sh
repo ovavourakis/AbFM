@@ -4,7 +4,6 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=30
-# SBATCH --mem-per-cpu=10G
 #SBATCH --mail-user=odysseas.vavourakis@balliol.ox.ac.uk
 #SBATCH --mail-type=ALL
 #SBATCH --output=/vols/opig/users/vavourakis/logs/species_annotate.out
@@ -25,6 +24,7 @@ gen_dir="/vols/opig/users/vavourakis/generations/newclust_newsample_newindex_ful
 seq_dir="$gen_dir"/designed_seqs
 input_dir="$seq_dir"/seqs
 output_dir="$seq_dir"/sapiens_fastas
+# gen_dir="/vols/opig/users/vavourakis/generations/TRAINSET_origseq/"
 # seq_dir="$gen_dir"
 # input_dir="$gen_dir"/seqs
 # output_dir="$gen_dir"/sapiens_fastas
@@ -68,7 +68,7 @@ biophi oasis "$seq_dir"/oasis_inputs.fa \
         --output "$seq_dir"/oasis_humanness.xlsx \
         --scheme imgt \
         --cdr-definition imgt \
-        --min-percent-subjects 1 \
+        --min-percent-subjects 50 \
         --summary
 
 xlsx2csv "$seq_dir"/oasis_humanness.xlsx > "$seq_dir"/oasis_humanness.csv
@@ -77,4 +77,5 @@ conda deactivate
 
 echo "Plotting..."
 conda activate fm
-python plot_humanness.py --gen_dir "$gen_dir"
+python plot_humanness.py --gen_dir "$gen_dir" --oasis_identity --rerun_frame_construction
+python plot_humanness.py --gen_dir "$gen_dir" --oasis_percentile
