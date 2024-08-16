@@ -1,5 +1,7 @@
 import numpy as np
-import os, re
+import os, re, warnings
+import pandas as pd
+
 from tqdm import tqdm
 from data import protein
 from openfold.utils import rigid_utils
@@ -15,6 +17,49 @@ from Bio import PDB
 from Bio.PDB import Chain, Residue
 from Bio.PDB.PDBExceptions import PDBConstructionWarning
 
+def find_closest_len_combos(df, combo):
+    len_h, len_l = combo
+    closest_combos = []
+    for i, length in enumerate([len_h, len_l]):
+        subset_df = df[df['len_combo'].apply(lambda x: x[i] == length)]
+        closest_length = subset_df.iloc[(subset_df['len_combo'].apply(lambda x: abs(x[1-i] - combo[1-i]))).argmin()]['len_combo'][1-i]
+        closest_combos.append((length, closest_length) if i == 0 else (closest_length, length))
+    return tuple(closest_combos)
+
+def sample_equivalent_trainset_strucs(gen_pdb_path_list, trainset_metadata_csv):
+    """Samples structures (pdb filepaths) from the trainset with equivalent VH/VL 
+    lengths to the generated structures."""
+
+    # get combinations present in generations
+    all_combos = []
+    for pdb_file in tqdm(gen_pdb_path_list):
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', PDBConstructionWarning)
+            structure = PDB.PDBParser().get_structure('structure', pdb_file)
+            assert len(structure) == 1, "Multiple models in PDB file."
+            model = structure[0]
+            assert len(model) == 2, "More than two chains in PDB file."
+            lens = tuple([len([res for res in chain if res.id[0] == ' ']) for chain in model])
+            all_combos.append(lens)
+
+    # read in trainset metadata
+    df = pd.read_csv(trainset_metadata_csv)
+    seqs = df['full_seq'].str.split('/', expand=True)
+    df['len_combo'] = list(zip(seqs[0].str.len(), seqs[1].str.len()))
+
+    # find trainset structures with equivalent VH/VL lengths
+    trainset_paths = []
+    for combo in all_combos:
+        try:
+            trainset_paths.append(df[df['len_combo'] == combo]['raw_path'].sample(n=1).iloc[0])
+        except KeyError:
+            print('Generated length combination not found in training set. Using two closest ...')
+            combo_1, combo_2 = find_closest_len_combos(df, combo)
+            trainset_paths.append(df[df['len_combo'] == combo_1]['raw_path'].sample(n=1).iloc[0])
+            trainset_paths.append(df[df['len_combo'] == combo_2]['raw_path'].sample(n=1).iloc[0])
+            
+    return trainset_paths
+            
 def get_valid_lens_probs(df, column='len_h'):
         """ Take lengths of individual chain (VH or VL) in reference dataset.
         Return lengths within the middle 95% of that distribution and their probabilities. """
