@@ -1,13 +1,13 @@
 #!/bin/bash
-#SBATCH -J species
+#SBATCH -J oasis
 #SBATCH --time=08:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=30
 #SBATCH --mail-user=odysseas.vavourakis@balliol.ox.ac.uk
 #SBATCH --mail-type=ALL
-#SBATCH --output=/vols/opig/users/vavourakis/logs/species_annotate.out
-#SBATCH --error=/vols/opig/users/vavourakis/logs/species_annotate.err
+#SBATCH --output=/vols/opig/users/vavourakis/logs/oasis_annotate.out
+#SBATCH --error=/vols/opig/users/vavourakis/logs/oasis_annotate.err
 
 #SBATCH --partition=high-opig-test
 #SBATCH --clusters=srf_gpu_01
