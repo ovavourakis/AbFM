@@ -26,7 +26,7 @@ def find_closest_len_combos(df, combo):
         closest_combos.append((length, closest_length) if i == 0 else (closest_length, length))
     return tuple(closest_combos)
 
-def sample_equivalent_trainset_strucs(gen_pdb_path_list, trainset_metadata_csv):
+def sample_equivalent_trainset_strucs(gen_pdb_path_list, trainset_metadata_csv, factor=10):
     """Samples structures (pdb filepaths) from the trainset with equivalent VH/VL 
     lengths to the generated structures."""
 
@@ -50,14 +50,10 @@ def sample_equivalent_trainset_strucs(gen_pdb_path_list, trainset_metadata_csv):
     # find trainset structures with equivalent VH/VL lengths
     trainset_paths = []
     for combo in all_combos:
-        try:
-            trainset_paths.append(df[df['len_combo'] == combo]['raw_path'].sample(n=1).iloc[0])
-        except KeyError:
-            print('Generated length combination not found in training set. Using two closest ...')
-            combo_1, combo_2 = find_closest_len_combos(df, combo)
-            trainset_paths.append(df[df['len_combo'] == combo_1]['raw_path'].sample(n=1).iloc[0])
-            trainset_paths.append(df[df['len_combo'] == combo_2]['raw_path'].sample(n=1).iloc[0])
-            
+        pathlist = df[(df['len_combo'] == combo) & (~df['raw_path'].isin(trainset_paths))]['raw_path'].sample(n=factor).tolist()
+        assert len(pathlist) == factor, "Not enough structures found for this length combination."
+        trainset_paths.extend(pathlist)
+                 
     return trainset_paths
             
 def get_valid_lens_probs(df, column='len_h'):

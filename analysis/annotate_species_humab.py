@@ -111,8 +111,10 @@ for v_gene in RF_LIST:
 
 # parse fastas
 print('\nParsing FASTAs...')
-seq_dir = '/gendir/seqs'
-# seq_dir = '/gendir/designed_seqs/seqs'
+if os.path.exists('/gendir/designed_seqs/seqs'):
+    seq_dir = '/gendir/designed_seqs/seqs'
+else:
+    seq_dir = '/gendir/seqs'
 tasks, all_fastas = [], [f for f in os.listdir(seq_dir) if f.endswith('.fa')]
 
 for f in all_fastas:

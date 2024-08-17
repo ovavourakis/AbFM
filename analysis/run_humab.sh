@@ -17,7 +17,7 @@
 #SBATCH --clusters=swan
 #SBATCH -w nagagpu06.cpu.stats.ox.ac.uk
 
-gendir='/vols/opig/users/vavourakis/generations/TRAINSET_genseq'    # contains fasta files to be annotated
+gendir='/vols/opig/users/vavourakis/generations/TRAINSET_origseq2'    # contains fasta files to be annotated
 script_dir='/vols/opig/users/vavourakis/codebase/AbFM/analysis'     # contains humab script to be loaded into container
 # script_dir=$(dirname "$(readlink -f "$0")")
 

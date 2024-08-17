@@ -14,7 +14,7 @@ should be structured as follows:
         - <structure_name>.fa
 Usage:
     python trainset_number_ab_seqs.py --gen_dir <path_to_root_of_generated_structures_and_seqs> [--rerun_annotation]
-    python trainset_number_ab_seqs.py --gen_dir /vols/opig/users/vavourakis/generations/TRAINSET_origseq --rerun_annotation
+    python trainset_number_ab_seqs.py --gen_dir /vols/opig/users/vavourakis/generations/TRAINSET_origseq2 --rerun_annotation
 
 Arguments:
     --gen_dir: Path to the directory containing generated sequences.

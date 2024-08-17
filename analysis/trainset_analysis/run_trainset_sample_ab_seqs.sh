@@ -22,15 +22,18 @@
 source ~/.bashrc
 conda activate fm
 
-metadata='/vols/opig/users/vavourakis/data/ab_processed_newclust_newindex/metadata.csv'
-folder_with_pdbs='/vols/opig/users/vavourakis/generations/TRAINSET/'
+gen_dir='/vols/opig/users/vavourakis/generations/newclust_newsample_newindex_fullrun'
+folder_with_pdbs='/vols/opig/users/vavourakis/generations/TRAINSET_genseq2/'
+
+ref_dir='/vols/opig/users/vavourakis/data/ab_processed_newclust_newindex'
 if [ ! -d $folder_with_pdbs ] 
 then
     mkdir -p $folder_with_pdbs
 fi
 
 echo 'Sub-sampling training set structures...'
-python trainset_lencombo_sampler.py --metadata_csv $metadata > $folder_with_pdbs'/random2kpdbs.txt'
+# python trainset_lencombo_sampler.py --metadata_csv $metadata > $folder_with_pdbs'/random2kpdbs.txt'
+python make_equiv_train_subsample.py --gen_dir $gen_dir --ref_dir $ref_dir > $folder_with_pdbs'/random2kpdbs.txt'
 
 echo 'Copying samples...'
 xargs -a $folder_with_pdbs'/random2kpdbs.txt' -I {} cp {} $folder_with_pdbs
