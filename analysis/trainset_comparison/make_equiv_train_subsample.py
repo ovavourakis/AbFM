@@ -1,7 +1,4 @@
-# TODO: fix code duplication with plot Ramach
-
-""" 
-Script to sub-sample the reference set (e.g. trainset) with a distribution of 
+""" Script to sub-sample the reference set (e.g. trainset) with a distribution of 
 length combinations exactly equiavlent to a set of generated structures. 
 
 Usage:

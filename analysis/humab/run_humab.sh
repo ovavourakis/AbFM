@@ -17,22 +17,22 @@
 #SBATCH --clusters=swan
 #SBATCH -w nagagpu06.cpu.stats.ox.ac.uk
 
-gendir='/vols/opig/users/vavourakis/generations/TRAINSET_origseq2'    # contains fasta files to be annotated
+gendir='/vols/opig/users/vavourakis/generations/newclust_newsample_newindex_fullrun'    # contains fasta files to be annotated
+refdir_orig='/vols/opig/users/vavourakis/generations/TRAINSET_origseq2'
+refdir_gen='/vols/opig/users/vavourakis/generations/TRAINSET_genseq2'
+
 script_dir='/vols/opig/users/vavourakis/codebase/AbFM/analysis'     # contains humab script to be loaded into container
-# script_dir=$(dirname "$(readlink -f "$0")")
-
 source ~/.bashrc
-
 
 echo "Running humab annotation on $gendir"
 singularity exec --bind /vols/opig/users/vavourakis/data/humab_sabbox_data:/sabdab-sabpred/data \
                  --bind $script_dir:/mnt \
                  --bind $gendir:/gendir \
                  /vols/opig/users/vavourakis/bin/sabbox.sif \
-                 /bin/bash -c "cd /mnt && python annotate_species_humab.py"
+                 /bin/bash -c "cd /mnt/humab && python annotate_species_humab.py"
 
 cd $script_dir
 conda activate fm
 
 echo "Humab results:"
-python plot_humab.py --gen_dir $gen_dir
+python plot_humab.py --gen_dir $gen_dir --train_orig $refdir_orig --train_gen $refdir_gen
