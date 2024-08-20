@@ -191,5 +191,5 @@ plot_boxplot(axes[1], ref_to_plot, 'Training Set', f'Globally Designable: {ref_g
 
 fig.suptitle('scRMSDs by North Region for Best Refolded Structure among 20', fontsize=20)
 plt.tight_layout(rect=[0, 0, 1, 0.95])
-plt.savefig(os.path.join(gen_dir, 'designed_seqs/best_rmsds_boxplot.png'))
+plt.savefig(os.path.join(gen_dir, 'designed_seqs/sc_rmsd_boxplot.png'))
 plt.show()
