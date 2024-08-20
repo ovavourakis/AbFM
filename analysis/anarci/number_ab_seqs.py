@@ -15,7 +15,7 @@ should be structured as follows:
             - <structure_name>.fa
 Usage:
     python number_ab_seqs.py --gen_dir <path_to_root_of_generated_structures_and_seqs> [--rerun_annotation]
-    python number_ab_seqs.py --gen_dir /vols/opig/users/vavourakis/generations/NEWCLUST_newsample --rerun_annotation
+    python number_ab_seqs.py --gen_dir /vols/opig/users/vavourakis/generations/newclust_newsample_newindex_fullrun --rerun_annotation
 
 Arguments:
     --gen_dir: Path to the directory containing generated structures and sequences.
@@ -93,11 +93,7 @@ if args.rerun_annotation:
                             human = True if alignment_details[seq][domain]['species'] == 'human' else False
                             correct_type = chain_types_match(alignment_details[seq][domain]['chain_type'], 
                                                             intended_chain_type)
-
-                        if human and correct_type:
                             domain_numbering, start_index, end_index = numbering[seq][domain]
-                        else:
-                            domain_numbering, start_index, end_index = None, None, None
                     else:
                         human, correct_type = False, False
                         domain_numbering, start_index, end_index = None, None, None

@@ -15,14 +15,18 @@ args = parser.parse_args()
 
 # set up directories
 gen_dir = args.gen_dir
-fasta_dir = os.path.join(gen_dir, "designed_seqs/seqs")
+if os.path.exists(os.path.join(gen_dir,'designed_seqs/seqs')):
+    fasta_dir = os.path.join(gen_dir, "designed_seqs/seqs")
+else:
+    fasta_dir = os.path.join(gen_dir, "seqs")
 out_dir = os.path.join(gen_dir, "refolded_strucs")
 if not os.path.exists(out_dir):
     os.makedirs(out_dir)
 
 print("Parsing sequences...")
 tasks, i = [], args.jobindex
-all_fastas = [f for i, f in enumerate(sorted(os.listdir(fasta_dir))) if f.endswith('.fa')][i*5:i*5+5]
+fastas_per_job = 5 if 'designed_seqs' in fasta_dir else 50
+all_fastas = [f for i, f in enumerate(sorted(os.listdir(fasta_dir))) if f.endswith('.fa')][i*fastas_per_job:i*fastas_per_job+fastas_per_job]
 print(all_fastas)
 for f in all_fastas:
     with open(os.path.join(fasta_dir, f)) as handle:
