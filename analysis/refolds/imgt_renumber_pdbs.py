@@ -1,4 +1,4 @@
-""" SPACE2 expects a directory of IMGT-numbered antibody pdbs. 
+""" SPACE2 (diversity tool) expects a directory of IMGT-numbered antibody pdbs. 
     Here, we take our sequence-less generated structures and re-index the residues in the pdbs
     based on the IMGT numbering of the inverse-folded sequence with the lowest scRMSD. """
 

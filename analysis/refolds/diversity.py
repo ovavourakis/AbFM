@@ -3,7 +3,7 @@ Calculates pairwise RMSDs among length-homogenous CDRs for each CDR type using I
 Generate a violin plot to visualize the distribution of RMSD values for each CDR type.
 
 Usage:
-    python space.py
+    python diversity.py
 """
 
 import glob, os
