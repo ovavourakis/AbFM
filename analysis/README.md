@@ -12,4 +12,8 @@ For your set of generations (edit appropriately) run:
     python number_ab_seqs.py                        # ANARCI on generated sequences                             
     python fold_seqs.py                             # re-fold                                                   
     sbatch run_humab.sh                             # humab     
-    python sc_rmsd.sh                               # scRMSD vs refolds                                                
+    python sc_rmsd.sh                               # scRMSD vs refolds
+    python imgt_renumber_pdbs.py                    # prep for SPACE2
+    python diversity.py                             # pw cdr rmsds
+    ./run_tm_score.sh                               # prep for novelty
+    python novelty.py                               # cdrh3 rmsd between closest tm matches 
