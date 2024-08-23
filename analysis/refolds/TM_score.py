@@ -1,6 +1,9 @@
 """
 Calculates the TM-score of a generated structure against the training set and saves the best-matching partner to csv.
 To be called from batch script.
+
+Usage:
+    python TM_score.py --jobindex 0 --gen_dir /vols/opig/users/vavourakis/generations/TRAINSET_origseq3
 """
 
 import glob, os, subprocess, argparse
@@ -28,7 +31,10 @@ args = parser.parse_args()
 # define IMGT-numbered pdb files
 print('Loading data...')
 gen_dir = args.gen_dir
-pdb_files = glob.glob(os.path.join(gen_dir, 'renumbered_pdbs', '*.pdb'))
+if os.path.exists(os.path.join(gen_dir, 'renumbered_pdbs')):
+    pdb_files = glob.glob(os.path.join(gen_dir, 'renumbered_pdbs', '*.pdb'))
+else:
+    pdb_files = glob.glob(os.path.join(gen_dir, 'strucs', '*.pdb'))
 
 train_dir = '/vols/opig/users/vavourakis/data/new_OAS_models/structures'
 train_pdb_files = glob.glob(os.path.join(train_dir, '*.pdb'))
@@ -51,7 +57,7 @@ train_strucs = train_cdr_cluster_ids[int(gen_cdrh3_len)]
 max_tm_score, closest_train_struc = 0, None
 for train_struc in tqdm(train_strucs):
     tm_score = get_TMscore(job_pdb_file, train_struc)
-    if tm_score > max_tm_score:
+    if tm_score > max_tm_score and tm_score < 1:
         max_tm_score = tm_score
         closest_train_struc = train_struc     
 row = [{'gen_struc': job_pdb_file, 'closest_train_struc': closest_train_struc, 'tm_score': max_tm_score}]

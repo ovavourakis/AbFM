@@ -15,5 +15,6 @@ For your set of generations (edit appropriately) run:
     python sc_rmsd.sh                               # scRMSD vs refolds
     python imgt_renumber_pdbs.py                    # prep for SPACE2
     python diversity.py                             # pw cdr rmsds
-    ./run_tm_score.sh                               # prep for novelty
+    
+    ./run_tm_score.sh                               # prep for novelty (3x, also on 2 equiv trainset - 200 size!)
     python novelty.py                               # cdrh3 rmsd between closest tm matches 

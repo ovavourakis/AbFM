@@ -1,10 +1,11 @@
 import numpy as np
-import os, re, warnings
+import os, re, warnings, ast
 import pandas as pd
 
 from tqdm import tqdm
 from data import protein
 from openfold.utils import rigid_utils
+from analysis.refolds.utils import numbering_to_region_index
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
@@ -26,7 +27,53 @@ def find_closest_len_combos(df, combo):
         closest_combos.append((length, closest_length) if i == 0 else (closest_length, length))
     return tuple(closest_combos)
 
-def sample_equivalent_trainset_strucs(gen_pdb_path_list, trainset_metadata_csv, factor=10):
+def extract_cdrh3_anarci_strings(anarci_string_dict):
+    d = ast.literal_eval(anarci_string_dict)
+    l = []
+    for k, local_numbering in d.items():
+        if k in ['fwh1', 'cdrh1', 'fwh2', 'cdrh2', 'fwh3', 'cdrh3', 'fwh4']:
+            l.extend([((int(pos[:-1]) if pos[-1].isalpha() else int(pos), pos[-1] if pos[-1].isalpha() else ' '), aa) for pos, aa in local_numbering.items()])
+    return str(l)
+
+def sample_equivalent_trainset_lencdrh3(gen_dir, 
+                                        trainset_metadata_csv='/vols/opig/users/vavourakis/data/new_OAS_models/OAS_paired_filtered_newclust.csv', 
+                                        factor=1):
+    """Samples structures (pdb filepaths) from the trainset with equivalent CDRH3 lengths to the generated structures."""
+    
+    # these filenames indentify which sequence was the best for each generation
+    renum_pdbs = [f for f in os.listdir(os.path.join(gen_dir, 'renumbered_pdbs')) if f.endswith('.pdb')] 
+
+    # get cdrh3 lens present in generations
+    anarci_df = pd.read_csv(os.path.join(gen_dir, 'designed_seqs', 'anarci_annotation.csv'))
+    cdrh3_lens = []
+    for index, row in anarci_df.iloc[::2].iterrows(): # skipping light chains
+        struc, seq_id = row['structure'], row['seq_id']
+        equiv_filename = f"{struc}_seq_{seq_id}_gen.pdb"
+        if equiv_filename in renum_pdbs:
+            region_index = numbering_to_region_index(row['domain_numbering'], row['seq'], row['chain'], use_north=True)
+            cdr3_h_length = len(region_index['CDR3_H']) if 'CDR3_H' in region_index else 0
+            if cdr3_h_length != 0:
+                cdrh3_lens.append(cdr3_h_length)
+    cdrh3_len_counts = pd.Series(cdrh3_lens).value_counts().to_dict()
+
+    # read in trainset metadata
+    train_metadata = pd.read_csv(trainset_metadata_csv)
+    train_metadata[['VH_seq', 'VL_seq']] = train_metadata['full_seq'].str.split('/', expand=True)
+    train_metadata['cdrh3_anarci_strings'] = train_metadata['ANARCI_numbering_heavy'].apply(extract_cdrh3_anarci_strings)
+    region_indices = train_metadata.apply(lambda x: numbering_to_region_index(x['cdrh3_anarci_strings'], x['VH_seq'], 'H', use_north=True), axis=1)
+    train_metadata['cdr3_h_len'] = region_indices.apply(lambda x: len(x['CDR3_H']) if 'CDR3_H' in x else 0)
+
+    # sample trainset structures with same cdrh3 length distribution
+    trainset_paths = []
+    for cdrh3_len, count in cdrh3_len_counts.items():
+        pathlist = train_metadata[train_metadata['cdr3_h_len'] == cdrh3_len]['pdb_path'].sample(n=count*factor).tolist()
+        assert len(pathlist) == count*factor, f"Not enough structures found for this cdrh3 length: {cdrh3_len}."
+        trainset_paths.extend(pathlist)
+
+    return trainset_paths
+
+
+def sample_equivalent_trainset_chainlen(gen_pdb_path_list, trainset_metadata_csv, factor=10):
     """Samples structures (pdb filepaths) from the trainset with equivalent VH/VL 
     lengths to the generated structures."""
 

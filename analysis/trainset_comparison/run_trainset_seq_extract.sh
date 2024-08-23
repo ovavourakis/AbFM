@@ -2,7 +2,7 @@ source ~/.bashrc
 conda activate fm
 
 gen_dir='/vols/opig/users/vavourakis/generations/newclust_newsample_newindex_fullrun'
-folder_with_pdbs='/vols/opig/users/vavourakis/generations/TRAINSET_origseq2'
+folder_with_pdbs='/vols/opig/users/vavourakis/generations/TRAINSET_origseq4'
 
 ref_dir='/vols/opig/users/vavourakis/data/ab_processed_newclust_newindex'
 if [ ! -d $folder_with_pdbs ] 
@@ -32,7 +32,7 @@ if [ ! -d $folder_with_pdbs'/seqs' ]; then
 fi
 python trainset_proc_pdb_seqs.py --extract --input_path $folder_with_pdbs --output_path $folder_with_pdbs'/seqs'
 
-echo 'Deleting renamed PDBs...'
-find $folder_with_pdbs -type f -name "*.pdb" -exec rm -f {} +
+# echo 'Deleting renamed PDBs...'
+# find $folder_with_pdbs -type f -name "*.pdb" -exec rm -f {} +
 
-echo 'Done.'
+# echo 'Done.'

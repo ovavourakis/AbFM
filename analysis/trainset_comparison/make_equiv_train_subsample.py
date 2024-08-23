@@ -6,7 +6,7 @@ Usage:
 """
 
 import os, argparse
-from analysis.utils import sample_equivalent_trainset_strucs
+from analysis.utils import sample_equivalent_trainset_chainlen, sample_equivalent_trainset_lencdrh3
 
 parser = argparse.ArgumentParser(description='Subsample an equivalent set of structures from trainset.')
 parser.add_argument('--gen_dir', type=str, default=None, help='Directory containing set of model generations to evaluate.')
@@ -23,7 +23,9 @@ out_dir = gen_dir
 gen_file_paths = [os.path.join(root, file) for root, dirs, files in os.walk(gen_dir) for file in files if file == "sample.pdb"]
 
 # load reference data
-train_file_paths = sample_equivalent_trainset_strucs(gen_file_paths, os.path.join(ref_dir, 'metadata.csv'), factor=10)
+train_file_paths = sample_equivalent_trainset_lencdrh3(gen_dir, factor=1)
+# train_file_paths = sample_equivalent_trainset_chainlen(gen_file_paths, os.path.join(ref_dir, 'metadata.csv'), factor=1)
+# train_file_paths = sample_equivalent_trainset_chainlen(gen_file_paths, os.path.join(ref_dir, 'metadata.csv'), factor=10)
 
 for path in train_file_paths:
     print(path)
