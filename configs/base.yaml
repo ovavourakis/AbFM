@@ -55,11 +55,19 @@ interpolant:
   min_t: 1e-2
   self_condition: ${model.edge_features.self_condition}
   rots:
-    train_schedule: linear                  # 'linear' or 'exp' (NOTE: however, differential by-component loss normalisation for rots and trans with different t not implemented -> FlowModule.model_step())
-    sample_schedule: exp                    # 'linear' or 'exp'
+    train_schedule: linear                  # 'linear' or 'exp' -- NOTE:
+                                                # TODO: there is only one t-embedding for a single t - THIS IS A MISTAKE IN THE CODE THAT WAS CORRECTED IN THE SCAFFOLDING CODE RELEASE BUT HASN'T BEEN FIXED HERE
+                                                  # CORRECT model t_embed calls (i.e. node embed fwd implementation) as well as interpolant sample (which ts are passed to the model - make sure they're kappa-sampled correctly reading the right schedule from config)
+                                                # AS IT STANDS, you can dupe the model by specifying 'exp' thereby giving it rots that are actually less-noised that t would suggest (but this will not be reflected in the t-embedding)
+                                                # during (linear) inference, however, the rotations will look very noised compared to same-t rotations at training -> OOD
+                                                # also note that differential by-component loss normalisation for rots and trans with different t not implemented -> FlowModule.model_step())
+    sample_schedule: exp                    # 'linear' or 'exp' -- NOTE:
+                                                # if trained with 'linear', the model will have seen simlarly-noised rotations during training, but now collapse them further towards data in initial steps (and less in later steps)
+                                                # i.e. over all of the gen-trajectory, rotations will look less-noised than they should be for their t -> settle onto rotational component early
+                                                # this empirically worked slightly better than matching 'linear' (or 'exp') schedule for train and test - BUT THIS DIFFERENCE HASN'T BEEN CHECKED WITH THE CURRENT INCORRECT T-EMBEDDING IMPLEMENTATION
     exp_rate: 10
   trans:
-    train_schedule: linear                  # 'linear' or 'exp' (NOTE: however, differential by-component loss normalisation for rots and trans with different t not implemented -> FlowModule.model_step())
+    train_schedule: linear                  # 'linear' or 'exp' -- NOTE: compare comments for rots above
     sample_schedule: linear                 # TODO: only 'linear' implemented; non-linear euler step for translations not implemented -> Interpolant._trans_euler_step()
     exp_rate: 10
   sampling:
@@ -101,7 +109,7 @@ experiment:                       # config for ModelRun
     translation_loss_weight: 2.0
     rotation_loss_weights: 0.3
     aux_loss_weight: 1.0          # in relation to rototrans-losses considered together
-    aux_loss_t_pass: 0.75          # use auxiliary losses from t in [k,1]; 0<k<1
+    aux_loss_t_pass: 0.75         # use auxiliary losses from t in [k,1]; 0<k<1
     t_normalize_clip: 0.9         # clip loss normaliser 1/(1-min(t,0.9))
     bb_atom_scale: 0.1            # convert coordinates from Angstrom to nm
     trans_scale: 0.1              # convert coordinates from Angstrom to nm

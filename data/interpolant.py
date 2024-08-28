@@ -60,7 +60,7 @@ class Interpolant:
        # practically in [0, 1-min_t]
        t = torch.rand(num_batch, device=self._device)
        return t * (1 - self._cfg.min_t)
-    #    return t * (1 - 2*self._cfg.min_t) + self._cfg.min_t
+       # return t * (1 - 2*self._cfg.min_t) + self._cfg.min_t
 
     def _corrupt_trans(self, trans_1, t, res_mask):
         trans_nm_0 = _centered_gaussian(*res_mask.shape, self._device)
@@ -200,8 +200,7 @@ class Interpolant:
         else:
             raise ValueError(
                 f'Unknown sample schedule {self._rots_cfg.sample_schedule}')
-        return so3_utils.geodesic_t(
-            scaling * d_t, rotmats_1, rotmats_t)
+        return so3_utils.geodesic_t(scaling * d_t, rotmats_1, rotmats_t)
 
     # TODO: consider implementing a better integrator (not Euler) - could maybe use scipy.integrate.odeint?
     # TODO: may want to alter so can handle multiple samples of different length in batch - padding in res_mask (and elsewhere?)
@@ -210,6 +209,7 @@ class Interpolant:
         This method is intended to be called on ab-parameter batches 
         during inference only. Each batch contains a single sample.
         """
+        # TODO: move this first section into FlowModule.predict_step()
         len_h, len_l = batch['len_h'].item(), batch['len_l'].item()
         num_res, num_batch = len_h + len_l, batch['len_h'].shape[0]
 
@@ -220,6 +220,7 @@ class Interpolant:
         batch = {'res_idx': res_idx,    
                  'res_mask': res_mask,
         }
+
         # start with a sample from the prior distribution
         # NOTE: during sampling we start from uniform on SO3
         #       whereas training used IGSO3
