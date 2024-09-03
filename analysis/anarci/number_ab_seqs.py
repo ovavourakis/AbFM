@@ -43,17 +43,36 @@ def chain_types_match(type, intended):
         return True
     return False
 
-def count_res_per_region(numbering_str):
-    numbering = ast.literal_eval(numbering_str)
+def count_res_per_region(row, use_north=True):
+    chain = row['chain']
+    numbering = ast.literal_eval(row['domain_numbering'])
+
     count_fw1 = count_cdr1 = count_fw2 = count_cdr2 = count_fw3 = count_cdr3 = count_fw4 = 0
     for (pos, ins_code), aa in numbering:
-        count_fw1 += int(pos <= 26 and aa != '-')
-        count_cdr1 += int(pos > 26 and pos <= 39 and aa != '-')
-        count_fw2 += int(pos > 39 and pos <= 55 and aa != '-')
-        count_cdr2 += int(pos > 55 and pos <= 65 and aa != '-')
-        count_fw3 += int(pos > 65 and pos <= 104 and aa != '-')
-        count_cdr3 += int(pos > 104 and pos <= 117 and aa != '-')
-        count_fw4 += int(pos > 117 and aa != '-')
+        if use_north and chain == 'H':
+            count_fw1 += int(pos <= 23 and aa != '-')
+            count_cdr1 += int(pos > 23 and pos <= 40 and aa != '-')
+            count_fw2 += int(pos > 40 and pos <= 54 and aa != '-')
+            count_cdr2 += int(pos > 54 and pos <= 66 and aa != '-')
+            count_fw3 += int(pos > 66 and pos <= 104 and aa != '-')
+            count_cdr3 += int(pos > 104 and pos <= 117 and aa != '-')
+            count_fw4 += int(pos > 117 and aa != '-') 
+        elif use_north and chain == 'L':
+            count_fw1 += int(pos <= 23 and aa != '-')
+            count_cdr1 += int(pos > 23 and pos <= 40 and aa != '-')
+            count_fw2 += int(pos > 40 and pos <= 54 and aa != '-')
+            count_cdr2 += int(pos > 54 and pos <= 69 and aa != '-')
+            count_fw3 += int(pos > 69 and pos <= 104 and aa != '-')
+            count_cdr3 += int(pos > 104 and pos <= 117 and aa != '-')
+            count_fw4 += int(pos > 117 and aa != '-') 
+        else:
+            count_fw1 += int(pos <= 26 and aa != '-')
+            count_cdr1 += int(pos > 26 and pos <= 39 and aa != '-')
+            count_fw2 += int(pos > 39 and pos <= 55 and aa != '-')
+            count_cdr2 += int(pos > 55 and pos <= 65 and aa != '-')
+            count_fw3 += int(pos > 65 and pos <= 104 and aa != '-')
+            count_cdr3 += int(pos > 104 and pos <= 117 and aa != '-')
+            count_fw4 += int(pos > 117 and aa != '-')
     return count_fw1, count_cdr1, count_fw2, count_cdr2, count_fw3, count_cdr3, count_fw4
 
 parser = argparse.ArgumentParser(description='Run overview QC on the sampled sequences for the generated structures.')
@@ -117,9 +136,10 @@ if args.rerun_annotation:
 # plot sequence qc -----------------------------------------------------------------------------------------------
 df = pd.read_csv(os.path.join(gen_dir, "designed_seqs/anarci_annotation.csv"))
 
-fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(17, 9), dpi=300)
+fig, axes = plt.subplots(nrows=2, ncols=3, figsize=(17, 9), dpi=300)
 # fig.suptitle('Synoptic Sequence QC', fontsize=24, y=0.96)
-titles = ['Percent Successfully \n Numbered', 'Percent Recognised as \n Single-Domain', 'Percent Recognised as \n Human', 'Percent with Matching \n Inferred Locus']
+# titles = ['Percent Successfully \n Numbered', 'Percent Recognised as \n Single-Domain', 'Percent Recognised as \n Human', 'Percent with Matching \n Inferred Locus']
+titles = ['Percent Successfully \n Numbered', 'Percent Recognised as \n Single-Domain', 'Percent with Matching \n Inferred Locus']
 chain_labels = ['Heavy Chain', 'Light Chain']
 
 for i, (title, frame) in enumerate([('Heavy-Chain Stats:', df[df['chain'] == 'H'].copy()), 
@@ -147,11 +167,12 @@ for i, (title, frame) in enumerate([('Heavy-Chain Stats:', df[df['chain'] == 'H'
         # stats per sequence-length bin
         pc_numbered_bins = frame.groupby('seq_len_bins')['numbering_failure'].apply(lambda x: 100 - x.sum() / len(x) * 100)
         pc_single_domain_bins = frame.groupby('seq_len_bins')['single_domain'].apply(lambda x: x.sum() / len(x) * 100)
-        pc_human_bins = frame.groupby('seq_len_bins')['human'].apply(lambda x: x.sum() / len(x) * 100)
+        # pc_human_bins = frame.groupby('seq_len_bins')['human'].apply(lambda x: x.sum() / len(x) * 100)
         pc_correct_type_bins = frame.groupby('seq_len_bins')['correct_type'].apply(lambda x: x.sum() / len(x) * 100)
 
         # plot by-length stats for this chain type
-        metrics = [pc_numbered_bins, pc_single_domain_bins, pc_human_bins, pc_correct_type_bins]
+        # metrics = [pc_numbered_bins, pc_single_domain_bins, pc_human_bins, pc_correct_type_bins]
+        metrics = [pc_numbered_bins, pc_single_domain_bins, pc_correct_type_bins]
         for j, metric in enumerate(metrics):
             bars = axes[i, j].bar(metric.index, metric.values, color='b' if i == 0 else 'r', alpha=0.5)
             if i == 0:
@@ -178,7 +199,8 @@ plt.savefig(os.path.join(gen_dir, "designed_seqs/chain_analysis.png"))
 
 # per region stats -----------------------------------------------------------------------------------------------
 df = df.dropna(subset=['domain_numbering'])
-region_counts = df.domain_numbering.apply(lambda x: count_res_per_region(x)).apply(pd.Series)
+print(df)
+region_counts = df.apply(count_res_per_region, axis=1).apply(pd.Series)
 region_counts.columns = ['lenFR1', 'lenCDR1', 'lenFR2', 'lenCDR2', 'lenFR3', 'lenCDR3', 'lenFR4']
 df = pd.concat([df, region_counts], axis=1)
 

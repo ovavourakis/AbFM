@@ -23,9 +23,9 @@ out_dir = gen_dir
 gen_file_paths = [os.path.join(root, file) for root, dirs, files in os.walk(gen_dir) for file in files if file == "sample.pdb"]
 
 # load reference data
-train_file_paths = sample_equivalent_trainset_lencdrh3(gen_dir, factor=1)
-# train_file_paths = sample_equivalent_trainset_chainlen(gen_file_paths, os.path.join(ref_dir, 'metadata.csv'), factor=1)
-# train_file_paths = sample_equivalent_trainset_chainlen(gen_file_paths, os.path.join(ref_dir, 'metadata.csv'), factor=10)
+train_file_paths = sample_equivalent_trainset_lencdrh3(gen_dir, factor=1)                                                   # TRAINSET_origseq4
+# train_file_paths = sample_equivalent_trainset_chainlen(gen_file_paths, os.path.join(ref_dir, 'metadata.csv'), factor=1)   # TRAINSET_origseq3
+# train_file_paths = sample_equivalent_trainset_chainlen(gen_file_paths, os.path.join(ref_dir, 'metadata.csv'), factor=10)  # TRAINSET_origseq2
 
 for path in train_file_paths:
     print(path)

@@ -42,17 +42,36 @@ def chain_types_match(type, intended):
         return True
     return False
 
-def count_res_per_region(numbering_str):
-    numbering = ast.literal_eval(numbering_str)
+def count_res_per_region(row, use_north=True):
+    chain = row['chain']
+    numbering = ast.literal_eval(row['domain_numbering'])
+
     count_fw1 = count_cdr1 = count_fw2 = count_cdr2 = count_fw3 = count_cdr3 = count_fw4 = 0
     for (pos, ins_code), aa in numbering:
-        count_fw1 += int(pos <= 26 and aa != '-')
-        count_cdr1 += int(pos > 26 and pos <= 39 and aa != '-')
-        count_fw2 += int(pos > 39 and pos <= 55 and aa != '-')
-        count_cdr2 += int(pos > 55 and pos <= 65 and aa != '-')
-        count_fw3 += int(pos > 65 and pos <= 104 and aa != '-')
-        count_cdr3 += int(pos > 104 and pos <= 117 and aa != '-')
-        count_fw4 += int(pos > 117 and aa != '-')
+        if use_north and chain == 'H':
+            count_fw1 += int(pos <= 23 and aa != '-')
+            count_cdr1 += int(pos > 23 and pos <= 40 and aa != '-')
+            count_fw2 += int(pos > 40 and pos <= 54 and aa != '-')
+            count_cdr2 += int(pos > 54 and pos <= 66 and aa != '-')
+            count_fw3 += int(pos > 66 and pos <= 104 and aa != '-')
+            count_cdr3 += int(pos > 104 and pos <= 117 and aa != '-')
+            count_fw4 += int(pos > 117 and aa != '-') 
+        elif use_north and chain == 'L':
+            count_fw1 += int(pos <= 23 and aa != '-')
+            count_cdr1 += int(pos > 23 and pos <= 40 and aa != '-')
+            count_fw2 += int(pos > 40 and pos <= 54 and aa != '-')
+            count_cdr2 += int(pos > 54 and pos <= 69 and aa != '-')
+            count_fw3 += int(pos > 69 and pos <= 104 and aa != '-')
+            count_cdr3 += int(pos > 104 and pos <= 117 and aa != '-')
+            count_fw4 += int(pos > 117 and aa != '-') 
+        else:
+            count_fw1 += int(pos <= 26 and aa != '-')
+            count_cdr1 += int(pos > 26 and pos <= 39 and aa != '-')
+            count_fw2 += int(pos > 39 and pos <= 55 and aa != '-')
+            count_cdr2 += int(pos > 55 and pos <= 65 and aa != '-')
+            count_fw3 += int(pos > 65 and pos <= 104 and aa != '-')
+            count_cdr3 += int(pos > 104 and pos <= 117 and aa != '-')
+            count_fw4 += int(pos > 117 and aa != '-')
     return count_fw1, count_cdr1, count_fw2, count_cdr2, count_fw3, count_cdr3, count_fw4
 
 parser = argparse.ArgumentParser(description='Run overview QC on AbMPNN-sampled sequences for the trainset structures.')
@@ -179,7 +198,7 @@ plt.savefig(os.path.join(gen_dir, "chain_analysis.png"))
 
 # per region stats -----------------------------------------------------------------------------------------------
 df = df.dropna(subset=['domain_numbering'])
-region_counts = df.domain_numbering.apply(lambda x: count_res_per_region(x)).apply(pd.Series)
+region_counts = df.apply(count_res_per_region, axis=1).apply(pd.Series)
 region_counts.columns = ['lenFR1', 'lenCDR1', 'lenFR2', 'lenCDR2', 'lenFR3', 'lenCDR3', 'lenFR4']
 df = pd.concat([df, region_counts], axis=1)
 

@@ -165,7 +165,7 @@ print(f"GLOBALLY DESIGNABLE: {globally_designable*100}%")
 
 
 print('Plotting results...')
-fig, axes = plt.subplots(1, 2, figsize=(15, 6))
+fig, axes = plt.subplots(1, 2, figsize=(15, 6), dpi=300)
 
 palette = {'global_rmsd': 'green', 'FR1_H': 'lightblue', 'CDR1_H': 'blue', 'FR2_H': 'lightblue', 'CDR2_H': 'blue', 
            'FR3_H': 'lightblue', 'CDR3_H': 'blue', 'FR4_H': 'lightblue', 'FR1_L': 'lightcoral', 'CDR1_L': 'red', 

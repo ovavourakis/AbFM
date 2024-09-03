@@ -32,11 +32,11 @@ for cdr in tqdm(['CDRH1', 'CDRH2', 'CDRH3', 'CDRL1', 'CDRL2', 'CDRL3']):
 rmsd_values = {cdr: [value for matrix in rmsd_matrices[cdr] for value in matrix[np.triu_indices(len(matrix), k=1)]] for cdr in cdrs}
 
 # plot
-plt.figure(figsize=(10, 6))
+plt.figure(figsize=(7.5, 6), dpi=300)
 sns.violinplot(data=[rmsd_values[cdr] for cdr in cdrs], palette="Set3", cut=0)
 plt.xticks(ticks=range(len(cdrs)), labels=cdrs)
 plt.ylabel('RMSD (Angstrom)')
-plt.title('Pairwise inter-sample RMSDs for same-length CDRs', fontsize=16)
+plt.title('Pairwise Inter-Sample RMSDs for Same-Length North CDRs', fontsize=16)
 outfile = os.path.join(gen_dir, 'designed_seqs', 'pw_rmsd_violinplot.png')
 plt.tight_layout()
 plt.savefig(outfile)

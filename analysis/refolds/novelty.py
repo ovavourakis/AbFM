@@ -59,15 +59,15 @@ for dir_path, csv_files, output_var in [(gen_dir, gen_csv_files, 'best_tm_partne
     elif output_var == 'best_tm_partners_ref2':
         best_tm_partners_ref2 = result
 
-plt.figure(figsize=(12, 6), dpi=300)
+plt.figure(figsize=(7.5, 6), dpi=300)
 combined_data = pd.concat([best_tm_partners[['cdrh3_rmsd']].dropna().assign(Source='Generated'), 
                            best_tm_partners_ref1[['cdrh3_rmsd']].dropna().assign(Source='Length-Combo Reference'),
                            best_tm_partners_ref2[['cdrh3_rmsd']].dropna().assign(Source='CDRH3-Length Reference')])
 sns.violinplot(x='Source', y='cdrh3_rmsd', data=combined_data, palette="Set3", cut=0, legend=False)
 plt.ylabel('CDRH3 RMSD (Angstrom)')
-plt.title('CDRH3 RMSD to Closest Trainset \nMatch by TM-Score', fontsize=16)
+plt.title('CDRH3 RMSD to Closest Same-Length Trainset Match by TM', fontsize=16)
 
-plt.xticks([0, 1, 2], ['Generated', 'Length-Combo\n Reference', 'CDRH3-Length\n Reference'])
+plt.xticks([0, 1, 2], ['Generated', 'Transet (Matched for\n Chain-Length Combinations)', 'Trainset (Matched for\n CDRH3 Lengths)'])
 plt.xlabel('')  # remove the x-axis label 'Source'
 outfile = os.path.join(gen_dir, 'designed_seqs', 'tm_cdrh3_rmsd_violinplot.png')
 plt.tight_layout()
